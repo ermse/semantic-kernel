@@ -2,6 +2,7 @@
 using System.IO;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
@@ -10,7 +11,7 @@ namespace ConsoleApp4x
 {
     internal static class ChatHistoryDeserializer
     {
-        internal static async ValueTask<ChatHistory> LoadChatHistoryFromJsonAsync(string filePath)
+        internal static async ValueTask<ChatHistory> LoadChatHistoryFromJsonAsync(string filePath, CancellationToken cancel)
         {
             try
             {

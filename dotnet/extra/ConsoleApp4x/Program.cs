@@ -1,9 +1,11 @@
 ﻿using System;
-using Microsoft.SemanticKernel;
-using Microsoft.Extensions.Configuration;
-using Microsoft.SemanticKernel.ChatCompletion;
 using System.Net.Http;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.ChatCompletion;
 
 namespace ConsoleApp4x
 {
@@ -13,16 +15,22 @@ namespace ConsoleApp4x
         {
             try
             {
+                var hab = Host.CreateApplicationBuilder(args);
+
+                var host = hab.Build();
+                var conf = host.Services.GetRequiredService<IConfiguration>();
+                var env = host.Services.GetRequiredService<IHostEnvironment>();
+                var lf = host.Services.GetRequiredService<IHostApplicationLifetime>();
                 // Build configuration from appsettings.json, environment variables, and user secrets
-                var configuration = new ConfigurationBuilder()
-                    .AddJsonFile("appsettings.json", optional: true)
-                    .AddEnvironmentVariables()
-                    .AddUserSecrets<AzureOpenAIConfig>(optional: false)
-                    .Build();
+                //var configuration = new ConfigurationBuilder()
+                //    .AddJsonFile("appsettings.json", optional: true)
+                //    .AddEnvironmentVariables()
+                //    .AddUserSecrets<AzureOpenAIConfig>(optional: false)
+                //    .Build();
 
                 // Read AzureOpenAI configuration
                 var azureOpenAIConfig = new AzureOpenAIConfig();
-                configuration.GetSection("AzureOpenAIConfig").Bind(azureOpenAIConfig);
+                conf.GetSection("AzureOpenAIConfig").Bind(azureOpenAIConfig);
 
                 // Validate configuration
                 if (string.IsNullOrWhiteSpace(azureOpenAIConfig.ApiKey) ||
@@ -32,7 +40,9 @@ namespace ConsoleApp4x
                 {
                     throw new InvalidOperationException("AzureOpenAI configuration is missing. Please configure ApiKey, EndPoint, and DeploymentName in appsettings.json or user secrets.");
                 }
-                var httpClient = new HttpClient();
+                using var httpClient = new LlmHttpClient();
+                httpClient.Timeout = TimeSpan.FromSeconds(300);
+
 
                 // Create kernel with Azure OpenAI configuration
                 Kernel kernel = Kernel.CreateBuilder()
@@ -45,7 +55,9 @@ namespace ConsoleApp4x
                     .Build();
 
                 // Restore chat history from Resources/ChatHistoryDump001.json
-                ChatHistory chatHistory = await ChatHistoryDeserializer.LoadChatHistoryFromJsonAsync("Resources/ChatHistoryDump001.json");
+                string file = "Resources/ChatHistoryDump-exam-11-video-tiled.json";
+                ChatHistory chatHistory = await ChatHistoryDeserializer
+                    .LoadChatHistoryFromJsonAsync(file, lf.ApplicationStopping);
 
                 var chatService = kernel.GetRequiredService<IChatCompletionService>();
                 var result = await chatService.GetChatMessageContentAsync(chatHistory);
