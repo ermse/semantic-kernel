@@ -14,12 +14,21 @@ namespace ConsoleApp4x
     public class LlmHttpClient : HttpClient
     {
         /// <summary>
+        /// LlmHttpClient
+        /// </summary>
+        /// <param name="handler"></param>
+        public LlmHttpClient(DelegatingHandler handler) : base(handler)
+        {
+
+        }
+
+        /// <summary>
         /// SendAsync
         /// </summary>
         /// <param name="request"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,   CancellationToken cancellationToken)
+        public override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             try
             {

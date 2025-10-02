@@ -40,8 +40,9 @@ namespace ConsoleApp4x
                 {
                     throw new InvalidOperationException("AzureOpenAI configuration is missing. Please configure ApiKey, EndPoint, and DeploymentName in appsettings.json or user secrets.");
                 }
-                using var httpClient = new LlmHttpClient();
-                httpClient.Timeout = TimeSpan.FromSeconds(300);
+                using var debugHandler = new DebugHttpHandler();
+                using var httpClient = new LlmHttpClient(debugHandler);
+                httpClient.Timeout = TimeSpan.FromSeconds(600);
 
 
                 // Create kernel with Azure OpenAI configuration
@@ -68,7 +69,7 @@ namespace ConsoleApp4x
                 Console.WriteLine($"Chat history loaded with {chatHistory.Count} messages");
                 Console.WriteLine($"Response: {result}");
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Console.WriteLine($"Error: {ex.Message}");
             }

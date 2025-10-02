@@ -3,7 +3,7 @@
     "ConsoleApp4x": {
       "commandName": "Project",
       "environmentVariables": {
-        "DOTNETCORE_ENVIRONMENT": "Development"
+        "DOTNET_ENVIRONMENT": "Development"
       }
     }
   }
