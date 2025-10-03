@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -40,28 +39,45 @@ namespace ConsoleApp4x
                 {
                     throw new InvalidOperationException("AzureOpenAI configuration is missing. Please configure ApiKey, EndPoint, and DeploymentName in appsettings.json or user secrets.");
                 }
-                using var debugHandler = new DebugHttpHandler();
-                using var httpClient = new LlmHttpClient(debugHandler);
-                httpClient.Timeout = TimeSpan.FromSeconds(600);
-
-
-                // Create kernel with Azure OpenAI configuration
-                Kernel kernel = Kernel.CreateBuilder()
-                    .AddAzureOpenAIChatCompletion(
-                        deploymentName: azureOpenAIConfig.Deployment,
-                        endpoint: azureOpenAIConfig.Endpoint,
-                        apiKey: azureOpenAIConfig.ApiKey,
-                        modelId: azureOpenAIConfig.ModelId,
-                        httpClient: httpClient)
-                    .Build();
-
+                ChatMessageContent result = null;
+                ChatHistory chatHistory = null;
                 // Restore chat history from Resources/ChatHistoryDump001.json
                 string file = "Resources/ChatHistoryDump-exam-11-video-tiled.json";
-                ChatHistory chatHistory = await ChatHistoryDeserializer
+                chatHistory = await ChatHistoryDeserializer
                     .LoadChatHistoryFromJsonAsync(file, lf.ApplicationStopping);
 
-                var chatService = kernel.GetRequiredService<IChatCompletionService>();
-                var result = await chatService.GetChatMessageContentAsync(chatHistory);
+                for (int i = 0; i < 20; i++)
+                {
+
+                    var handler = new LoggingRetryHttpHandler(logFilePath: "C:\\tmp\\SemanticKernelDebug\\log.txt");
+                    // using var debugHandler = new DebugHttpHandler();
+                    var httpClient = new LlmHttpClient(handler);
+                    httpClient.Timeout = TimeSpan.FromSeconds(600);
+
+
+                    // Create kernel with Azure OpenAI configuration
+                    Kernel kernel = Kernel.CreateBuilder()
+                        .AddAzureOpenAIChatCompletion(
+                            deploymentName: azureOpenAIConfig.Deployment,
+                            endpoint: azureOpenAIConfig.Endpoint,
+                            apiKey: azureOpenAIConfig.ApiKey,
+                            modelId: azureOpenAIConfig.ModelId,
+                            httpClient: httpClient)
+                        .Build();
+
+
+                    var chatService = kernel.GetRequiredService<IChatCompletionService>();
+
+                    try
+                    {
+                        result = await chatService.GetChatMessageContentAsync(chatHistory);
+                    }
+                    catch
+                    {
+
+                    }
+                    await Task.Delay(TimeSpan.FromSeconds(10));
+                }
                 Console.WriteLine("Kernel created successfully with Azure OpenAI configuration!");
                 Console.WriteLine($"Deployment: {azureOpenAIConfig.Deployment}");
                 Console.WriteLine($"Endpoint: {azureOpenAIConfig.Endpoint}");

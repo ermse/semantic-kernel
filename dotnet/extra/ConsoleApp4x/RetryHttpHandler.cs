@@ -34,11 +34,12 @@ namespace ConsoleApp4x
         /// <inheritdoc/>
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
+            HttpResponseMessage response = null;
             for (int attempt = 0; attempt <= this._maxRetries; attempt++)
             {
                 try
                 {
-                    var response = await base.SendAsync(request, cancellationToken);
+                    response = await base.SendAsync(request, cancellationToken);
 
                     // Don't retry on success or client errors (4xx)
                     if (response.IsSuccessStatusCode || ((int)response.StatusCode >= 400 && (int)response.StatusCode < 500))
@@ -76,7 +77,7 @@ namespace ConsoleApp4x
                     throw;
                 }
             }
-
+            return response;
             // Final attempt without retry logic
             //return await base.SendAsync(request, cancellationToken);
         }
