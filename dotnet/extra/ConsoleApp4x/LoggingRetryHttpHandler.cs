@@ -54,14 +54,14 @@ namespace ConsoleApp4x
         {
             var logBuilder = new StringBuilder();
             var retryIntervals = new List<double>();
-            var startTime = DateTimeOffset.UtcNow;
+            var startTime = DateTimeOffset.Now;
             var requestId = Guid.NewGuid().ToString("N"); // Short unique identifier
 
             logBuilder.AppendLine($"[{startTime:yyyy-MM-dd HH:mm:ss.fff}] HTTP Request started - ID: {requestId} - URL: {request.RequestUri}");
 
             for (int attempt = 0; attempt <= this._maxRetries; attempt++)
             {
-                var attemptStartTime = DateTimeOffset.UtcNow;
+                var attemptStartTime = DateTimeOffset.Now;
 
                 try
                 {
@@ -70,7 +70,7 @@ namespace ConsoleApp4x
                     // Don't retry on success or client errors (4xx)
                     if (response.IsSuccessStatusCode || ((int)response.StatusCode >= 400 && (int)response.StatusCode < 500))
                     {
-                        var totalDuration = DateTimeOffset.UtcNow - startTime;
+                        var totalDuration = DateTimeOffset.Now - startTime;
                         var intervals = retryIntervals.Count > 0 ? $"[{string.Join(", ", retryIntervals.ConvertAll(x => $"{x:F2}s"))}]" : "[]";
 
                         logBuilder.AppendLine($"Attempts: {attempt + 1} - Intervals: {intervals} - Final Result: {response.StatusCode} - Total Duration: {totalDuration.TotalSeconds:F2}s");
@@ -93,7 +93,7 @@ namespace ConsoleApp4x
                     }
 
                     // Final attempt reached with server error but no more retries
-                    var finalDuration = DateTimeOffset.UtcNow - startTime;
+                    var finalDuration = DateTimeOffset.Now - startTime;
                     var finalIntervals = retryIntervals.Count > 0 ? $"[{string.Join(", ", retryIntervals.ConvertAll(x => $"{x:F2}s"))}]" : "[]";
 
                     logBuilder.AppendLine($"Attempts: {attempt + 1} - Intervals: {finalIntervals} - Final Result: {response.StatusCode} - Total Duration: {finalDuration.TotalSeconds:F2}s");
@@ -121,7 +121,8 @@ namespace ConsoleApp4x
                 }
                 catch (Exception ex)
                 {
-                    var errorDuration = DateTimeOffset.UtcNow - startTime;
+                    // $exception	{"Cannot access a disposed object.\r\nObject name: 'SslStream'."}	System.ObjectDisposedException
+                    var errorDuration = DateTimeOffset.Now - startTime;
                     var errorIntervals = retryIntervals.Count > 0 ? $"[{string.Join(", ", retryIntervals.ConvertAll(x => $"{x:F2}s"))}]" : "[]";
 
                     logBuilder.AppendLine($"Attempts: {attempt + 1} - Intervals: {errorIntervals} - Final Result: Exception ({ex.GetType().Name}: {ex.Message}) - Total Duration: {errorDuration.TotalSeconds:F2}s");
@@ -132,7 +133,7 @@ namespace ConsoleApp4x
             }
 
             // This should never be reached due to the loop structure, but included for completeness
-            var fallbackDuration = DateTimeOffset.UtcNow - startTime;
+            var fallbackDuration = DateTimeOffset.Now - startTime;
             var fallbackIntervals = retryIntervals.Count > 0 ? $"[{string.Join(", ", retryIntervals.ConvertAll(x => $"{x:F2}s"))}]" : "[]";
 
             logBuilder.AppendLine($"Attempts: {this._maxRetries + 1} - Intervals: {fallbackIntervals} - Final Result: Retry logic exhausted - Total Duration: {fallbackDuration.TotalSeconds:F2}s");
@@ -162,7 +163,7 @@ namespace ConsoleApp4x
                 }
                 if (response.Headers.RetryAfter.Date.HasValue)
                 {
-                    return response.Headers.RetryAfter.Date.Value - DateTimeOffset.UtcNow;
+                    return response.Headers.RetryAfter.Date.Value - DateTimeOffset.Now;
                 }
             }
 

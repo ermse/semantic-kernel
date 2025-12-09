@@ -1,0 +1,1 @@
+This app in test of LoggingRetryHttpHandler
