@@ -20,6 +20,8 @@
   <Folder Name="/extra/">
     <Project Path="extra/ConsoleApp/ConsoleApp.csproj" />
     <Project Path="extra/ConsoleApp4x/ConsoleApp4x.csproj" />
+    <Project Path="extra/DicomUtils/DicomUtils.csproj" />
+    <Project Path="extra/MySkUtils/MySkUtils.csproj" />
   </Folder>
   <Folder Name="/samples/">
     <File Path="samples/README.md" />

@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace ConsoleApp4x
+﻿namespace MySkUtils
 {
     /// <summary>
     /// Configuration settings for Azure OpenAI connection

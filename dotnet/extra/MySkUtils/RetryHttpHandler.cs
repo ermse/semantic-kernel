@@ -4,7 +4,7 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace ConsoleApp4x
+namespace MySkUtils
 {
     /// <summary>
     /// Represents a message handler that retries HTTP requests based on specified conditions.

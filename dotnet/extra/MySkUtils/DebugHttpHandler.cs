@@ -6,7 +6,7 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace ConsoleApp4x
+namespace MySkUtils
 {
     internal class DebugHttpHandler : DelegatingHandler
     {

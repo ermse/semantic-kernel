@@ -3,15 +3,15 @@
 using System;
 using System.Net.Http;
 
-namespace ConsoleApp4x
+namespace MySkUtils
 {
-    internal static class LlmHttpClientProvider
+    public static class LlmHttpClientProvider
     {
 
-        internal static HttpClient GetHttpClient()
+        public static HttpClient GetHttpClient()
         {
             var client = new HttpClient(NonDisposableLoggingRetrySocketHttpHandler.Instance, disposeHandler: false);
-            client.Timeout = TimeSpan.FromSeconds(20);
+            client.Timeout = TimeSpan.FromSeconds(600);
             return client;
         }
     }

@@ -7,11 +7,11 @@ using System.Threading.Tasks;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 
-namespace ConsoleApp4x
+namespace MySkUtils
 {
-    internal static class ChatHistoryDeserializer
+    public static class ChatHistoryDeserializer
     {
-        internal static async ValueTask<ChatHistory> LoadChatHistoryFromJsonAsync(string filePath, CancellationToken cancel)
+        public static async ValueTask<ChatHistory> LoadChatHistoryFromJsonAsync(string filePath, CancellationToken cancel)
         {
             try
             {
@@ -19,7 +19,7 @@ namespace ConsoleApp4x
                 if (!File.Exists(fullPath))
                 {
                     Console.WriteLine($"Warning: Chat history file not found at {fullPath}. Creating empty chat history.");
-                    return new ChatHistory();
+                    throw new FileNotFoundException(fullPath);
                 }
 
                 // Use synchronous File.ReadAllText for .NET Framework 4.7.2 compatibility

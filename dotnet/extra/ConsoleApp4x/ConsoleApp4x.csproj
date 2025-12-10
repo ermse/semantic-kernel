@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net4.7.2</TargetFramework>
+    <TargetFramework>net4.8</TargetFramework>
     <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>disable</Nullable>
     <UserSecretsId>sk-dotnet-ermse-40b184ab-af4a-4064-99e4-943a24c1f75e</UserSecretsId>
@@ -21,10 +21,15 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Connectors\Connectors.AzureOpenAI\Connectors.AzureOpenAI.csproj" />
     <ProjectReference Include="..\..\src\SemanticKernel.Abstractions\SemanticKernel.Abstractions.csproj" />
+    <ProjectReference Include="..\MySkUtils\MySkUtils.csproj" />
+    <ProjectReference Include="..\DicomUtils\DicomUtils.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <None Update="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\cdf069b023ea4e33b5c78ac1eff45370_ChatHistoryDump.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="Resources\ChatHistoryDump-exam-11-video-tiled.json">

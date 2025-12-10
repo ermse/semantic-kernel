@@ -9,12 +9,13 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
+using MySkUtils;
 
 namespace ConsoleApp4x
 {
     internal static class Program
     {
-        internal static string LogFilePath = "C:\\tmp\\SemanticKernelDebug\\log.txt";
+
         private static async Task Main(string[] args)
         {
             try
@@ -44,90 +45,21 @@ namespace ConsoleApp4x
                 {
                     throw new InvalidOperationException("AzureOpenAI configuration is missing. Please configure ApiKey, EndPoint, and DeploymentName in appsettings.json or user secrets.");
                 }
-                string result = null;
-                ChatHistory chatHistory = null;
-                // Restore chat history from Resources/ChatHistoryDump001.json
-                string file = "Resources/ChatHistoryDump-exam-11-video-tiled.json";
-                chatHistory = await ChatHistoryDeserializer
-                    .LoadChatHistoryFromJsonAsync(file, lf.ApplicationStopping);
 
-                //using var handler = NonDisposableLoggingRetrySocketHttpHandler.Instance;
-                // using var handler = new LoggingRetryHttpHandler(logFilePath: LogFilePath);
-                // using var handler = new DebugHttpHandler();
-                using var httpClient = LlmHttpClientProvider.GetHttpClient();
+                //await ChatDeserializerTest.DoTestAsync(
+                //    "Resources/ChatHistoryDump-exam-11-video-tiled.json",
+                //    azureOpenAIConfig,
+                //    lf.ApplicationStopping);
 
-                // Create kernel with Azure OpenAI configuration
-                Kernel kernel = Kernel.CreateBuilder()
-                    .AddAzureOpenAIChatCompletion(
-                        deploymentName: azureOpenAIConfig.Deployment,
-                        endpoint: azureOpenAIConfig.Endpoint,
-                        apiKey: azureOpenAIConfig.ApiKey,
-                        modelId: azureOpenAIConfig.ModelId,
-                        httpClient: httpClient)
-                    .Build();
-
-
-                var chatService = kernel.GetRequiredService<IChatCompletionService>();
-
-                for (int i = 0; i < 20; i++)
-                {
-                    try
-                    {
-                        result = await GetChatResultStreamedAsync(kernel, chatHistory, lf.ApplicationStopping);
-                    }
-                    catch
-                    {
-
-                    }
-                    await Task.Delay(TimeSpan.FromSeconds(10));
-                }
-                Console.WriteLine("Kernel created successfully with Azure OpenAI configuration!");
-                Console.WriteLine($"Deployment: {azureOpenAIConfig.Deployment}");
-                Console.WriteLine($"Endpoint: {azureOpenAIConfig.Endpoint}");
-                Console.WriteLine($"Model ID: {azureOpenAIConfig.ModelId ?? "Not specified"}");
-                Console.WriteLine($"Chat history loaded with {chatHistory.Count} messages");
-                Console.WriteLine($"Response: {result}");
+                await ChatDeserializerTest.DoTestAsync(
+                    "Resources/cdf069b023ea4e33b5c78ac1eff45370_ChatHistoryDump.json",
+                    azureOpenAIConfig,
+                    lf.ApplicationStopping);
             }
-            catch (Exception ex)
+            catch
             {
-                Console.WriteLine($"Error: {ex.Message}");
+                throw;
             }
-        }
-
-        private static async Task<string> GetChatResultAsync(Kernel kernel, ChatHistory chatHistory, CancellationToken cancel)
-        {
-
-            var chatService = kernel.GetRequiredService<IChatCompletionService>();
-
-            var result = await chatService
-                .GetChatMessageContentsAsync(chatHistory, cancellationToken: cancel)
-                .ConfigureAwait(false);
-
-            if (result.Count > 0)
-            {
-                return result[0].Content;
-            }
-            throw new InvalidDataException();
-        }
-
-        private static async Task<string> GetChatResultStreamedAsync(Kernel kernel, ChatHistory chatHistory, CancellationToken cancel)
-        {
-
-            var chatCompletion = kernel.GetRequiredService<IChatCompletionService>();
-
-            IAsyncEnumerable<StreamingChatMessageContent> resp = chatCompletion
-                .GetStreamingChatMessageContentsAsync(chatHistory, null, null, cancel);
-
-            var str = new StringBuilder();
-
-            await foreach (StreamingChatMessageContent item in resp)
-            {
-                if (item != null && !string.IsNullOrEmpty(item.Content))
-                {
-                    str.Append(item.Content);
-                }
-            }
-            return str.ToString();
         }
     }
 }

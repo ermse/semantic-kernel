@@ -9,3 +9,4 @@ using System.Diagnostics.CodeAnalysis;
 [assembly: SuppressMessage("Style", "IDE0161:Convert to file-scoped namespace", Justification = "<Pending>", Scope = "namespace", Target = "~N:ConsoleApp4x")]
 [assembly: SuppressMessage("Design", "CA1031:Do not catch general exception types", Justification = "<Pending>", Scope = "member", Target = "~M:ConsoleApp4x.Program.Main(System.String[])~System.Threading.Tasks.Task")]
 [assembly: SuppressMessage("Usage", "CA2215:Dispose methods should call base class dispose", Justification = "<Pending>", Scope = "member", Target = "~M:ConsoleApp4x.NonDisposableLoggingRetrySocketHttpHandler.Dispose(System.Boolean)")]
+[assembly: SuppressMessage("Style", "IDE0161:Convert to file-scoped namespace", Justification = "<Pending>", Scope = "namespace", Target = "~N:MySkUtils")]

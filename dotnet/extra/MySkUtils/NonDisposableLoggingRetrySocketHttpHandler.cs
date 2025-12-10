@@ -1,4 +1,4 @@
-﻿namespace ConsoleApp4x
+﻿namespace MySkUtils
 {
     /// <summary>
     /// Represents a message handler that retries HTTP requests based on specified conditions.
@@ -9,18 +9,21 @@
     /// user.</remarks>
     public sealed class NonDisposableLoggingRetrySocketHttpHandler : LoggingRetryHttpHandler
     {
+        private static string LogFilePath = "C:\\tmp\\SemanticKernelDebug\\log.txt";
 
         private NonDisposableLoggingRetrySocketHttpHandler(string logFilePath)
             : base(logFilePath: logFilePath)
         {
         }
 
+        //TODO:
+        // modify this property to functin
         /// <summary>
         /// Gets the singleton instance of the <see cref="NonDisposableLoggingRetrySocketHttpHandler"/>.
         /// </summary>
         public static NonDisposableLoggingRetrySocketHttpHandler Instance { get; } =
 
-            new NonDisposableLoggingRetrySocketHttpHandler(Program.LogFilePath);
+            new NonDisposableLoggingRetrySocketHttpHandler(LogFilePath);
 
         /// <summary>
         /// Disposes the underlying resources held by the <see cref="NonDisposableLoggingRetrySocketHttpHandler"/>.
