@@ -3,21 +3,18 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
+using DicomUtils;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
+using Microsoft.SemanticKernel.Connectors.AzureOpenAI;
 using MySkUtils;
-using DicomUtils;
 
 namespace ConsoleApp4x;
 
-internal class ChatDeserializerTest
+internal class FunctionCallTest
 {
     public static async Task DoTestAsync(string file, AzureOpenAIConfig azureOpenAIConfig, CancellationToken cancel)
     {
@@ -35,18 +32,18 @@ internal class ChatDeserializerTest
             string result = null;
             ChatHistory chatHistory = null;
             // Restore chat history from Resources/ChatHistoryDump001.json
-           
+
             chatHistory = await ChatHistoryDeserializer
                 .LoadChatHistoryFromJsonAsync(file, cancel);
 
-           
+
             using var httpClient = LlmHttpClientProvider.GetHttpClient(
                 TimeSpan.FromSeconds(180),
                 3,
                 TimeSpan.FromSeconds(5),
                 "C:\\tmp\\SemanticKernelDebug\\log.txt");
 
-            
+
 
             // Create kernel with Azure OpenAI configuration
             Kernel kernel = Kernel.CreateBuilder()
@@ -57,24 +54,22 @@ internal class ChatDeserializerTest
                     modelId: azureOpenAIConfig.ModelId,
                     httpClient: httpClient)
                 .Build();
-            
+
             // Add DicomPlugin to kernel so LLM can call its functions
-            //kernel.Plugins.AddFromObject(new DicomPlugin(), "DicomPlugin");
+            kernel.Plugins.AddFromObject(new DicomPlugin(), "DicomPlugin");
 
             var chatService = kernel.GetRequiredService<IChatCompletionService>();
 
-            for (int i = 0; i < 20; i++)
-            {
-                try
-                {
-                    result = await GetChatResultStreamedAsync(kernel, chatHistory, cancel);
-                }
-                catch
-                {
 
-                }
-                await Task.Delay(TimeSpan.FromSeconds(10));
+            try
+            {
+                result = await GetChatResultAsync(kernel, chatHistory, cancel);
             }
+            catch
+            {
+
+            }
+
             Console.WriteLine("Kernel created successfully with Azure OpenAI configuration!");
             Console.WriteLine($"Deployment: {azureOpenAIConfig.Deployment}");
             Console.WriteLine($"Endpoint: {azureOpenAIConfig.Endpoint}");
@@ -90,11 +85,15 @@ internal class ChatDeserializerTest
 
     private static async Task<string> GetChatResultAsync(Kernel kernel, ChatHistory chatHistory, CancellationToken cancel)
     {
-
         var chatService = kernel.GetRequiredService<IChatCompletionService>();
 
+        var executionSettings = new AzureOpenAIPromptExecutionSettings
+        {
+            FunctionChoiceBehavior = FunctionChoiceBehavior.Auto()
+        };
+
         var result = await chatService
-            .GetChatMessageContentsAsync(chatHistory, cancellationToken: cancel)
+            .GetChatMessageContentsAsync(chatHistory, executionSettings, kernel, cancel)
             .ConfigureAwait(false);
 
         if (result.Count > 0)
@@ -106,11 +105,15 @@ internal class ChatDeserializerTest
 
     private static async Task<string> GetChatResultStreamedAsync(Kernel kernel, ChatHistory chatHistory, CancellationToken cancel)
     {
-
         var chatCompletion = kernel.GetRequiredService<IChatCompletionService>();
 
+        var executionSettings = new AzureOpenAIPromptExecutionSettings
+        {
+            FunctionChoiceBehavior = FunctionChoiceBehavior.Auto()
+        };
+
         IAsyncEnumerable<StreamingChatMessageContent> resp = chatCompletion
-            .GetStreamingChatMessageContentsAsync(chatHistory, null, null, cancel);
+            .GetStreamingChatMessageContentsAsync(chatHistory, executionSettings, kernel, cancel);
 
         var str = new StringBuilder();
 

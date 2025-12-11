@@ -28,7 +28,7 @@ namespace MySkUtils
         /// <param name="maxRetries"></param>
         /// <param name="baseDelay"></param>
         /// <param name="logFilePath"></param>
-        public LoggingRetryHttpHandler(int maxRetries = 5, TimeSpan? baseDelay = null, string logFilePath = null)
+        public LoggingRetryHttpHandler(int maxRetries, TimeSpan? baseDelay, string logFilePath)
             : this(next: new HttpClientHandler(), maxRetries, baseDelay, logFilePath)
         {
 
@@ -37,11 +37,10 @@ namespace MySkUtils
         /// <summary>
         /// Initializes a new instance of the <see cref="RetryHttpHandler"/> class with specified retry settings.
         /// </summary>
-        /// <param name="innerHandler"></param>
         /// <param name="maxRetries"></param>
         /// <param name="baseDelay"></param>
         /// <param name="logFilePath">Path to the log file. If null, uses "retry-log.txt" in the current directory.</param>
-        public LoggingRetryHttpHandler(HttpMessageHandler next, int maxRetries = 5, TimeSpan? baseDelay = null, string logFilePath = null)
+        public LoggingRetryHttpHandler(HttpMessageHandler next, int maxRetries, TimeSpan? baseDelay, string logFilePath)
             : base(next)
         {
             this._maxRetries = maxRetries;
@@ -75,7 +74,7 @@ namespace MySkUtils
 
                         logBuilder.AppendLine($"Attempts: {attempt + 1} - Intervals: {intervals} - Final Result: {response.StatusCode} - Total Duration: {totalDuration.TotalSeconds:F2}s");
 
-                        await this.WriteLogToFileAsync(logBuilder.ToString());
+                        this.WriteLogToFile(logBuilder.ToString());
                         return response;
                     }
 
@@ -98,7 +97,7 @@ namespace MySkUtils
 
                     logBuilder.AppendLine($"Attempts: {attempt + 1} - Intervals: {finalIntervals} - Final Result: {response.StatusCode} - Total Duration: {finalDuration.TotalSeconds:F2}s");
 
-                    await this.WriteLogToFileAsync(logBuilder.ToString());
+                    this.WriteLogToFile(logBuilder.ToString());
                     return response;
                 }
                 catch (HttpRequestException ex) when (attempt < this._maxRetries)
@@ -127,7 +126,7 @@ namespace MySkUtils
 
                     logBuilder.AppendLine($"Attempts: {attempt + 1} - Intervals: {errorIntervals} - Final Result: Exception ({ex.GetType().Name}: {ex.Message}) - Total Duration: {errorDuration.TotalSeconds:F2}s");
 
-                    await this.WriteLogToFileAsync(logBuilder.ToString());
+                    this.WriteLogToFile(logBuilder.ToString());
                     throw;
                 }
             }
@@ -138,7 +137,7 @@ namespace MySkUtils
 
             logBuilder.AppendLine($"Attempts: {this._maxRetries + 1} - Intervals: {fallbackIntervals} - Final Result: Retry logic exhausted - Total Duration: {fallbackDuration.TotalSeconds:F2}s");
 
-            await this.WriteLogToFileAsync(logBuilder.ToString());
+            this.WriteLogToFile(logBuilder.ToString());
             throw new InvalidOperationException("Retry logic exhausted without returning a response.");
         }
 
@@ -175,31 +174,10 @@ namespace MySkUtils
             return TimeSpan.FromMilliseconds(exponentialDelay + jitter);
         }
 
-        private async Task WriteLogToFileAsync(string logContent)
+        private void WriteLogToFile(string logContent)
         {
-            try
-            {
-                var directory = Path.GetDirectoryName(this._logFilePath);
-                if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
-                {
-                    Directory.CreateDirectory(directory);
-                }
-
-                using var fileStream = new FileStream(this._logFilePath, FileMode.Append, FileAccess.Write, FileShare.Read);
-                using var writer = new StreamWriter(fileStream, Encoding.UTF8);
-
-                await writer.WriteLineAsync("=== HTTP Retry Session ===");
-                await writer.WriteAsync(logContent);
-                await writer.WriteLineAsync("=== End Session ===");
-                await writer.WriteLineAsync();
-            }
-            catch (Exception ex)
-            {
-                // Fallback to console if file writing fails
-                Console.WriteLine($"Failed to write retry log to file '{this._logFilePath}': {ex.Message}");
-                Console.WriteLine("Retry log content:");
-                Console.WriteLine(logContent);
-            }
+            var fullContent = $"=== HTTP Retry Session ==={Environment.NewLine}{logContent}=== End Session ==={Environment.NewLine}{Environment.NewLine}";
+            File.AppendAllText(this._logFilePath, fullContent, Encoding.UTF8);
         }
     }
 }

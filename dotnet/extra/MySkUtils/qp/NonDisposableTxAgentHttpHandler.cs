@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Net.Http;
 
 namespace MySkUtils
 {
@@ -9,31 +10,27 @@ namespace MySkUtils
     /// an exponential backoff strategy with optional jitter. It does not retry requests  that result in client errors
     /// (4xx) or successful responses. The retry logic is applied  up to a maximum number of attempts specified by the
     /// user.</remarks>
-    public sealed class NonDisposableLoggingRetrySocketHttpHandler : LoggingRetryHttpHandler
+    public sealed class NonDisposableTxAgentHttpHandler : TxAgentHttpHandler
     {
-        private static NonDisposableLoggingRetrySocketHttpHandler _instance;
+        private static NonDisposableTxAgentHttpHandler _instance;
         private static readonly object _lock = new object();
 
         /// <summary>
         /// Initializes a new instance of the <see cref="NonDisposableLoggingRetrySocketHttpHandler"/> class.
         /// </summary>
-        /// <param name="maxRetries">The maximum number of retry attempts.</param>
-        /// <param name="baseDelay">The base delay for exponential backoff. If null, uses a default delay.</param>
-        /// <param name="logFilePath">The path to the log file.</param>
-        private NonDisposableLoggingRetrySocketHttpHandler(int maxRetries, TimeSpan? baseDelay, string logFilePath)
-            : base(maxRetries: maxRetries, baseDelay: baseDelay, logFilePath: logFilePath)
+         private NonDisposableTxAgentHttpHandler(string logFile, HttpMessageHandler innerHandler)
+            : base(logFile, innerHandler)
         {
         }
 
         /// <summary>
-        /// Gets the singleton instance of the <see cref="NonDisposableLoggingRetrySocketHttpHandler"/> with custom retry settings.
+        /// Gets the singleton instance of the <see cref="NonDisposableTxAgentHttpHandler"/> with custom settings.
         /// The first call to this method initializes the singleton with the provided parameters. Subsequent calls return the same instance and ignore the parameters.
         /// </summary>
-        /// <param name="maxRetries">The maximum number of retry attempts.</param>
-        /// <param name="baseDelay">The base delay for exponential backoff.</param>
         /// <param name="logFilePath">The path to the log file.</param>
-        /// <returns>The singleton instance of <see cref="NonDisposableLoggingRetrySocketHttpHandler"/>.</returns>
-        public static NonDisposableLoggingRetrySocketHttpHandler GetInstance(int maxRetries, TimeSpan baseDelay, string logFilePath)
+        /// <param name="innerHandler">The inner HTTP message handler.</param>
+        /// <returns>The singleton instance of <see cref="NonDisposableTxAgentHttpHandler"/>.</returns>
+        public static NonDisposableTxAgentHttpHandler GetInstance(string logFilePath, HttpMessageHandler innerHandler)
         {
             if (_instance == null)
             {
@@ -41,17 +38,14 @@ namespace MySkUtils
                 {
                     if (_instance == null)
                     {
-                        _instance = new NonDisposableLoggingRetrySocketHttpHandler(
-                            maxRetries: maxRetries,
-                            baseDelay: baseDelay,
-                            logFilePath: logFilePath);
+                        _instance = new NonDisposableTxAgentHttpHandler(logFilePath, innerHandler);
                     }
                 }
             }
             
             return _instance;
         }
-
+       
         /// <summary>
         /// Disposes the underlying resources held by the <see cref="NonDisposableLoggingRetrySocketHttpHandler"/>.
         /// This implementation does nothing to prevent unintended disposal, as it may affect all references.
