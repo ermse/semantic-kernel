@@ -46,10 +46,18 @@ internal class FunctionCallManualRemoteTest
 
             /*
             TODO:
-            instead of adding functions to kernel by instatiating
-            DicomPlugin take some sort of textual description of the plugin and it's functions
+            instead of adding functions to kernel by instatiating DicomPlugin
+           
+            take some sort of textual description of the plugin and it's functions
             and make sure that textual representation is included in llm request like in sample data below.
             So llm can make function calls.
+            The idea is to somehow add text information to the Llm request from function description without
+            having actual function and if Llm response wiht funcion call get that textual information and
+            pass it to 
+            GetFunctionResultRemotely(string functionCallJson, CancellationToken cancel)
+
+
+
             {
              ...
              "tools": [
