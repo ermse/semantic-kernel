@@ -504,3 +504,4 @@ swa-cli.config.json
 **/dapr.yaml
 /dotnet/extra/ConsoleApp4x/Resources/cdf069b023ea4e33b5c78ac1eff45370_ChatHistoryDump.json
 /dotnet/extra/DicomUtils/TestData/cdf069b023ea4e33b5c78ac1eff45370.ultrasound-regions.json
+/dotnet/extra/ConsoleApp4x/Resources/function_call_log_2025-12-11_16_14.txt
