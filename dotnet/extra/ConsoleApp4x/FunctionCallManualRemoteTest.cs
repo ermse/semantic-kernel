@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using DicomUtils;
@@ -113,9 +114,22 @@ internal class FunctionCallManualRemoteTest
                 return messageContent.Content ?? string.Empty;
             }
 
-            // Process each function call
+            // Process each function call - serialize and call remotely
             Console.WriteLine($"Found {functionCalls.Count()} function call(s)");
 
+            // Serialize function calls to JSON array
+            var serializedFunctionCalls = functionCalls.Select(fc => new
+            {
+                Id = fc.Id,
+                PluginName = fc.PluginName,
+                FunctionName = fc.FunctionName,
+                Arguments = fc.Arguments
+            }).ToList();
+
+            string functionCallsJson = JsonSerializer.Serialize(serializedFunctionCalls);
+            Console.WriteLine($"Serialized function calls: {functionCallsJson}");
+
+            // Call remote function execution for each function call
             foreach (FunctionCallContent functionCall in functionCalls)
             {
                 Console.WriteLine($"  Function: {functionCall.PluginName}.{functionCall.FunctionName}");
@@ -133,20 +147,19 @@ internal class FunctionCallManualRemoteTest
                         continue;
                     }
 
-                    // Look up the function in the kernel
-                    if (!kernel.Plugins.TryGetFunction(functionCall.PluginName, functionCall.FunctionName, out KernelFunction? function))
+                    // Serialize this specific function call
+                    var singleFunctionCallJson = JsonSerializer.Serialize(new
                     {
-                        string errorMessage = $"Error: Function {functionCall.PluginName}.{functionCall.FunctionName} not found in kernel.";
-                        Console.WriteLine($"  Result: {errorMessage}");
-                        AddFunctionResultToHistory(chatHistory, functionCall, errorMessage);
-                        continue;
-                    }
+                        Id = functionCall.Id,
+                        PluginName = functionCall.PluginName,
+                        FunctionName = functionCall.FunctionName,
+                        Arguments = functionCall.Arguments
+                    });
 
-                    // Invoke the function
-                    Console.WriteLine($"  Invoking function...");
-                    FunctionResult functionResult = await function.InvokeAsync(kernel, functionCall.Arguments, cancel);
+                    // Execute the function remotely
+                    Console.WriteLine($"  Executing function remotely...");
+                    string resultValue = await GetFunctionResultRemotely(singleFunctionCallJson, cancel);
 
-                    string resultValue = functionResult.GetValue<object>()?.ToString() ?? string.Empty;
                     Console.WriteLine($"  Result: {resultValue.Substring(0, Math.Min(200, resultValue.Length))}...");
 
                     // Add the function result to chat history
@@ -166,15 +179,106 @@ internal class FunctionCallManualRemoteTest
         throw new InvalidOperationException($"Maximum iterations ({MaxIterations}) reached without getting a final response.");
     }
 
-    // TODO
-    // change the method GetChatResultAsync so serializes function call instead of invoking,
-    // similar to how Llm in response does it. 
-    // and calls GetFunctionResultRemotely passing it serialized array of function calls
-    // the GetFunctionResultRemotely calls new DicomPlugin().RegionsJsonAsync(...)
-    // filling the call with required parameters and returning result.
     private static async Task<string> GetFunctionResultRemotely(string functionCallJson, CancellationToken cancel)
     {
-        
+        // Deserialize the function call
+        var options = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        };
+
+        var functionCallData = JsonSerializer.Deserialize<FunctionCallData>(functionCallJson, options);
+
+        if (functionCallData == null)
+        {
+            throw new InvalidOperationException("Failed to deserialize function call JSON");
+        }
+
+        Console.WriteLine($"Remote execution - Plugin: {functionCallData.PluginName}, Function: {functionCallData.FunctionName}");
+
+        // Check if this is a DicomPlugin call
+        if (functionCallData.PluginName == "DicomPlugin" && functionCallData.FunctionName == "RegionsJson")
+        {
+            // Extract the dicomFileId parameter from Arguments
+            if (functionCallData.Arguments == null)
+            {
+                throw new InvalidOperationException("Function arguments are null");
+            }
+
+            long dicomFileId = 0;
+
+            // Arguments is a KernelArguments which is essentially a dictionary
+            if (functionCallData.Arguments.ContainsKey("dicomFileId"))
+            {
+                var fileIdValue = functionCallData.Arguments["dicomFileId"];
+                if (fileIdValue != null)
+                {
+                    if (fileIdValue is long longValue)
+                    {
+                        dicomFileId = longValue;
+                    }
+                    else if (fileIdValue is int intValue)
+                    {
+                        dicomFileId = intValue;
+                    }
+                    else if (fileIdValue is string strValue && long.TryParse(strValue, out long parsedValue))
+                    {
+                        dicomFileId = parsedValue;
+                    }
+                    else if (fileIdValue is JsonElement jsonElement)
+                    {
+                        // Handle JsonElement properly based on its ValueKind
+                        switch (jsonElement.ValueKind)
+                        {
+                            case JsonValueKind.Number:
+                                if (jsonElement.TryGetInt64(out long longVal))
+                                {
+                                    dicomFileId = longVal;
+                                }
+                                else
+                                {
+                                    throw new InvalidOperationException($"Cannot convert JsonElement number to long: {jsonElement}");
+                                }
+                                break;
+                            case JsonValueKind.String:
+                                if (long.TryParse(jsonElement.GetString(), out long parsedLong))
+                                {
+                                    dicomFileId = parsedLong;
+                                }
+                                else
+                                {
+                                    throw new InvalidOperationException($"Cannot parse JsonElement string to long: {jsonElement.GetString()}");
+                                }
+                                break;
+                            default:
+                                throw new InvalidOperationException($"Unexpected JsonElement ValueKind for dicomFileId: {jsonElement.ValueKind}");
+                        }
+                    }
+                    else
+                    {
+                        // Fallback: try using Convert.ToInt64 for other types
+                        try
+                        {
+                            dicomFileId = Convert.ToInt64(fileIdValue);
+                        }
+                        catch (InvalidCastException ex)
+                        {
+                            throw new InvalidOperationException($"Cannot convert dicomFileId value of type {fileIdValue.GetType()} to long", ex);
+                        }
+                    }
+                }
+            }
+
+            Console.WriteLine($"Calling DicomPlugin.RegionsJsonAsync with dicomFileId: {dicomFileId}");
+
+            // Create a new instance of DicomPlugin and call the function
+            var dicomPlugin = new DicomPlugin();
+            string result = await dicomPlugin.RegionsJsonAsync(dicomFileId);
+
+            return result;
+        }
+
+        throw new NotSupportedException($"Function {functionCallData.PluginName}.{functionCallData.FunctionName} is not supported for remote execution");
     }
 
     private static void AddFunctionResultToHistory(ChatHistory chatHistory, FunctionCallContent functionCall, string result)
@@ -193,5 +297,14 @@ internal class FunctionCallManualRemoteTest
         message.Items.Add(functionResultContent);
 
         chatHistory.Add(message);
+    }
+
+    // Helper class for deserializing function call data
+    private class FunctionCallData
+    {
+        public string? Id { get; set; }
+        public string? PluginName { get; set; }
+        public string? FunctionName { get; set; }
+        public KernelArguments? Arguments { get; set; }
     }
 }
