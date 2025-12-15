@@ -14,21 +14,12 @@ using MySkUtils;
 
 namespace ConsoleApp4x;
 
-internal class FunctionCallTest
+internal class FunctionCallAutoTest
 {
     public static async Task DoTestAsync(string file, AzureOpenAIConfig azureOpenAIConfig, CancellationToken cancel)
     {
         try
         {
-
-            // Validate configuration
-            if (string.IsNullOrWhiteSpace(azureOpenAIConfig.ApiKey) ||
-                string.IsNullOrWhiteSpace(azureOpenAIConfig.Endpoint) ||
-                string.IsNullOrWhiteSpace(azureOpenAIConfig.Deployment) ||
-                string.IsNullOrWhiteSpace(azureOpenAIConfig.ModelId))
-            {
-                throw new InvalidOperationException("AzureOpenAI configuration is missing. Please configure ApiKey, EndPoint, and DeploymentName in appsettings.json or user secrets.");
-            }
             string result = null;
             ChatHistory chatHistory = null;
             // Restore chat history from Resources/ChatHistoryDump001.json
@@ -36,14 +27,11 @@ internal class FunctionCallTest
             chatHistory = await ChatHistoryDeserializer
                 .LoadChatHistoryFromJsonAsync(file, cancel);
 
-
             using var httpClient = LlmHttpClientProvider.GetHttpClient(
                 TimeSpan.FromSeconds(180),
                 3,
                 TimeSpan.FromSeconds(5),
                 "C:\\tmp\\SemanticKernelDebug\\log.txt");
-
-
 
             // Create kernel with Azure OpenAI configuration
             Kernel kernel = Kernel.CreateBuilder()
@@ -59,7 +47,6 @@ internal class FunctionCallTest
             kernel.Plugins.AddFromObject(new DicomPlugin(), "DicomPlugin");
 
             var chatService = kernel.GetRequiredService<IChatCompletionService>();
-
 
             try
             {
@@ -92,7 +79,7 @@ internal class FunctionCallTest
             FunctionChoiceBehavior = FunctionChoiceBehavior.Auto()
         };
 
-        var result = await chatService
+        IReadOnlyList<ChatMessageContent> result = await chatService
             .GetChatMessageContentsAsync(chatHistory, executionSettings, kernel, cancel)
             .ConfigureAwait(false);
 
