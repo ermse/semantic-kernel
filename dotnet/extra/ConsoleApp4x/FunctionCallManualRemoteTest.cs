@@ -44,6 +44,43 @@ internal class FunctionCallManualRemoteTest
                     httpClient: httpClient)
                 .Build();
 
+            /*
+            TODO:
+            instead of adding functions to kernel by instatiating
+            DicomPlugin take some sort of textual description of the plugin and it's functions
+            and make sure that textual representation is included in llm request like in sample data below.
+            So llm can make function calls.
+            {
+             ...
+             "tools": [
+                {
+                  "type": "function",
+                  "function": {
+                    "description": "Returns string representing json containing [(0018,6011) Sequence of Ultrasound Regions] extracted from dicom file.",
+                    "name": "DicomPlugin-RegionsJson",
+                    "parameters": {
+                      "type": "object",
+                      "required": [
+                        "dicomFileId"
+                      ],
+                      "properties": {
+                        "dicomFileId": {
+                          "description": "Id of the dicom file.",
+                          "type": "integer"
+                        }
+                      }
+                    },
+                    "strict": false
+                  }
+                }
+              ],
+              "tool_choice": "auto"
+            ...
+            }
+
+
+            */
+
             // Add DicomPlugin to kernel so LLM can call its functions
             kernel.Plugins.AddFromObject(new DicomPlugin(), "DicomPlugin");
 
