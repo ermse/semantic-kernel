@@ -18,6 +18,7 @@
     <File Path="nuget/VECTORDATA-CONNECTORS-NUGET.md" />
   </Folder>
   <Folder Name="/extra/">
+    <Project Path="extra/AppTests4x/AppTests4x.csproj" />
     <Project Path="extra/ConsoleApp/ConsoleApp.csproj" />
     <Project Path="extra/ConsoleApp4x/ConsoleApp4x.csproj" />
     <Project Path="extra/DicomUtils/DicomUtils.csproj" />
