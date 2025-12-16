@@ -1,19 +1,20 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using System;
+using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using DicomUtils;
-using Microsoft.SemanticKernel;
 
 namespace ConsoleApp4x;
 
 /// <summary>
 /// Hosts and executes remote LLM function calls.
 /// This class receives serialized function call information and routes it to the appropriate implementation.
+/// Note: This class is designed to be independent of Semantic Kernel.
 /// </summary>
-internal class RemoteLlmFunctionsHost
+public class RemoteLlmFunctionsHost
 {
     public static readonly string DicomPluginDescriptionJson = PluginDescriber.CreatePluginDescriptionJson(typeof(DicomPlugin));
 
@@ -68,41 +69,47 @@ internal class RemoteLlmFunctionsHost
         return result;
     }
 
-    private long ExtractDicomFileId(KernelArguments arguments)
+    private long ExtractDicomFileId(Dictionary<string, object> arguments)
     {
         long dicomFileId = 0;
 
-        if (arguments.ContainsKey("dicomFileId"))
+        object fileIdValue = null;
+        foreach (var kvp in arguments)
         {
-            var fileIdValue = arguments["dicomFileId"];
-            if (fileIdValue != null)
+            if (string.Equals(kvp.Key, "dicomFileId", StringComparison.OrdinalIgnoreCase))
             {
-                if (fileIdValue is long longValue)
+                fileIdValue = kvp.Value;
+                break;
+            }
+        }
+
+        if (fileIdValue != null)
+        {
+            if (fileIdValue is long longValue)
+            {
+                dicomFileId = longValue;
+            }
+            else if (fileIdValue is int intValue)
+            {
+                dicomFileId = intValue;
+            }
+            else if (fileIdValue is string strValue && long.TryParse(strValue, out long parsedValue))
+            {
+                dicomFileId = parsedValue;
+            }
+            else if (fileIdValue is JsonElement jsonElement)
+            {
+                dicomFileId = ExtractFromJsonElement(jsonElement);
+            }
+            else
+            {
+                try
                 {
-                    dicomFileId = longValue;
+                    dicomFileId = Convert.ToInt64(fileIdValue);
                 }
-                else if (fileIdValue is int intValue)
+                catch (InvalidCastException ex)
                 {
-                    dicomFileId = intValue;
-                }
-                else if (fileIdValue is string strValue && long.TryParse(strValue, out long parsedValue))
-                {
-                    dicomFileId = parsedValue;
-                }
-                else if (fileIdValue is JsonElement jsonElement)
-                {
-                    dicomFileId = ExtractFromJsonElement(jsonElement);
-                }
-                else
-                {
-                    try
-                    {
-                        dicomFileId = Convert.ToInt64(fileIdValue);
-                    }
-                    catch (InvalidCastException ex)
-                    {
-                        throw new InvalidOperationException($"Cannot convert dicomFileId value of type {fileIdValue.GetType()} to long", ex);
-                    }
+                    throw new InvalidOperationException($"Cannot convert dicomFileId value of type {fileIdValue.GetType()} to long", ex);
                 }
             }
         }

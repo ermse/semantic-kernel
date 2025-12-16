@@ -61,10 +61,15 @@ namespace ConsoleApp4x
                 //   azureOpenAIConfig,
                 //   lf.ApplicationStopping);
 
-                await FunctionCallManualRemoteTest.DoTestAsync(
-                   "Resources/cdf069b023ea4e33b5c78ac1eff45370_ChatHistoryDump.json",
-                   azureOpenAIConfig,
-                   lf.ApplicationStopping);
+                //await FunctionCallManualRemoteTest.DoTestAsync(
+                //   "Resources/cdf069b023ea4e33b5c78ac1eff45370_ChatHistoryDump.json",
+                //   azureOpenAIConfig,
+                //   lf.ApplicationStopping);
+
+                await FunctionCallAutoRemoteTest.DoTestAsync(
+                  "Resources/cdf069b023ea4e33b5c78ac1eff45370_ChatHistoryDump.json",
+                  azureOpenAIConfig,
+                  lf.ApplicationStopping);
 
             }
             catch

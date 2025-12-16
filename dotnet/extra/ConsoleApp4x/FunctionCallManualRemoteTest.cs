@@ -17,8 +17,6 @@ namespace ConsoleApp4x;
 
 internal class FunctionCallManualRemoteTest
 {
-  
-
     public static async Task DoTestAsync(string file, AzureOpenAIConfig azureOpenAIConfig, CancellationToken cancel)
     {
         try
@@ -54,7 +52,9 @@ internal class FunctionCallManualRemoteTest
 
             foreach (var pluginGroup in functionDescriptions.GroupBy(f => f.PluginName))
             {
-                var functions = CreateFunctionsFromDescriptions(pluginGroup.ToList(), remoteFunctionsHost, cancel);
+                var functions = RemoteFunctionWrapper
+                    .CreateFunctionsFromDescriptions(pluginGroup.ToList(), remoteFunctionsHost, cancel);
+
                 var plugin = KernelPluginFactory.CreateFromFunctions(pluginGroup.Key, functions);
                 kernel.Plugins.Add(plugin);
             }
@@ -83,80 +83,15 @@ internal class FunctionCallManualRemoteTest
         }
     }
 
-    private static IEnumerable<KernelFunction> CreateFunctionsFromDescriptions(
-        List<RemoteFunctionDescription> descriptions,
-        RemoteLlmFunctionsHost remoteFunctionsHost,
-        CancellationToken cancel)
-    {
-        foreach (var desc in descriptions)
-        {
-            // Create parameter metadata from the textual description
-            var parameters = desc.Parameters.Select(p => new KernelParameterMetadata(p.Name)
-            {
-                Description = p.Description,
-                ParameterType = GetTypeFromTypeName(p.Type),
-                IsRequired = p.IsRequired
-            }).ToList();
-
-            // Capture description for use in the lambda
-            var capturedDesc = desc;
-
-            // Create a function that forwards all calls to GetFunctionResultRemotely
-            // The function body doesn't contain actual business logic - it just captures
-            // the arguments and serializes them to be sent to the remote executor
-            var function = KernelFunctionFactory.CreateFromMethod(
-                // TODO: add test CancelationToken to the function
-                method: async (KernelArguments args) =>
-                {
-                    // Serialize the function call information
-                    var functionCallJson = JsonSerializer.Serialize(new
-                    {
-                        PluginName = capturedDesc.PluginName,
-                        FunctionName = capturedDesc.FunctionName,
-                        Arguments = args
-                    });
-
-                    Console.WriteLine($"Function {capturedDesc.PluginName}.{capturedDesc.FunctionName} called, forwarding to remote execution...");
-
-                    // Forward to remote execution
-                    return await remoteFunctionsHost.ExecuteFunctionAsync(functionCallJson, cancel);
-                },
-                functionName: desc.FunctionName,
-                description: desc.Description,
-                parameters: parameters,
-                returnParameter: new KernelReturnParameterMetadata
-                {
-                    ParameterType = typeof(string),
-                    Description = "Result from remote function execution"
-                }
-            );
-
-            yield return function;
-        }
-    }
-
-    private static Type GetTypeFromTypeName(string typeName)
-    {
-        return typeName?.ToLowerInvariant() switch
-        {
-            "integer" => typeof(long),
-            "int" => typeof(int),
-            "long" => typeof(long),
-            "string" => typeof(string),
-            "boolean" => typeof(bool),
-            "bool" => typeof(bool),
-            "number" => typeof(double),
-            "double" => typeof(double),
-            "float" => typeof(float),
-            _ => typeof(object)
-        };
-    }
-
+    /// <summary>
+    /// RECOMMENDED PATTERN: Manual function invocation with full access to FunctionCallContent.Id
+    /// </summary>
     private static async Task<string> GetChatResultAsync(Kernel kernel, ChatHistory chatHistory, RemoteLlmFunctionsHost remoteFunctionsHost, CancellationToken cancel)
     {
         var chatService = kernel.GetRequiredService<IChatCompletionService>();
 
         // Disable auto-invoke to handle function calls manually
+        // This gives us full access to FunctionCallContent including the Id
         var executionSettings = new AzureOpenAIPromptExecutionSettings
         {
             FunctionChoiceBehavior = FunctionChoiceBehavior.Auto(autoInvoke: false)
@@ -208,13 +143,17 @@ internal class FunctionCallManualRemoteTest
                         continue;
                     }
 
+                    // HERE WE HAVE FULL ACCESS TO functionCall.Id
+                    // This is why manual invocation is recommended for remote function execution
                     var singleFunctionCallJson = JsonSerializer.Serialize(new
                     {
-                        Id = functionCall.Id,
+                        Id = functionCall.Id,  // ← ID is available here!
                         PluginName = functionCall.PluginName,
                         FunctionName = functionCall.FunctionName,
                         Arguments = functionCall.Arguments
                     });
+                    // example of serialized FunctionCall
+                    // {"Id":"call_8kOVmAjNLwArGKhfLSrzgVKW","PluginName":"DicomPlugin","FunctionName":"RegionsJson","Arguments":{"dicomFileId":"598"}}
 
                     Console.WriteLine($"  Executing function remotely...");
                     string resultValue = await remoteFunctionsHost.ExecuteFunctionAsync(singleFunctionCallJson, cancel);
