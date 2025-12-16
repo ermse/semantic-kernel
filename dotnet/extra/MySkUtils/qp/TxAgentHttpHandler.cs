@@ -18,7 +18,7 @@ namespace MySkUtils
     public class TxAgentHttpHandler : DelegatingHandler
     {
         private string logfile;
-
+        private static readonly string dtFormat = "yyyy-MM-dd HH:mm zz";
         /// <summary>
         /// Constructory
         /// </summary>
@@ -128,7 +128,7 @@ namespace MySkUtils
             try
             {
 
-                File.AppendAllText(logfile, string.Format("LLM Http Request\nId: {0}\nUrl:{1}\n", reqId, request.RequestUri));
+                File.AppendAllText(logfile, string.Format("LLM Http Request\nId: {0}\nUrl:{1}\nTimestamp:{2}\n", reqId, request.RequestUri, DateTimeOffset.Now.ToString(dtFormat)));
 
                 if (logLlmRequestBody)
                 {
@@ -197,11 +197,12 @@ namespace MySkUtils
                         File.AppendAllText(
                             logfile,
                             string.Format(
-                            "LLM Http Response Success\nReqId: {0}\nStatus Code: {1}\nRequests Left: {2}\nTokens Left: {3}\n",
+                            "LLM Http Response Success\nReqId: {0}\nStatus Code: {1}\nRequests Left: {2}\nTokens Left: {3}\nTimestamp:{4}\n",
                             reqId,
                             resp.StatusCode,
                             rl,
-                            tl));
+                            tl,
+                            DateTimeOffset.Now.ToString(dtFormat)));
 
 
                         if (logLlmResponseBody)

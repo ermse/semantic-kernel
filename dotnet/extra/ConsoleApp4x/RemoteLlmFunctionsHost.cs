@@ -15,6 +15,22 @@ namespace ConsoleApp4x;
 /// </summary>
 internal class RemoteLlmFunctionsHost
 {
+    // TODO: move this property to the RemoteLlmFunctionsHost
+    public static readonly string DicomPluginDescriptionJson = @"
+    {
+        ""PluginName"": ""DicomPlugin"",
+        ""FunctionName"": ""RegionsJson"",
+        ""Description"": ""Returns string representing json containing [(0018,6011) Sequence of Ultrasound Regions] extracted from dicom file."",
+        ""Parameters"": [
+            {
+                ""Name"": ""dicomFileId"",
+                ""Description"": ""Id of the dicom file."",
+                ""Type"": ""integer"",
+                ""IsRequired"": true
+            }
+        ]
+    }";
+
     /// <summary>
     /// Executes a function remotely based on serialized function call information.
     /// </summary>

@@ -17,20 +17,7 @@ namespace ConsoleApp4x;
 
 internal class FunctionCallManualRemoteTest
 {
-    private static readonly string DicomPluginDescriptionJson = @"
-    {
-        ""PluginName"": ""DicomPlugin"",
-        ""FunctionName"": ""RegionsJson"",
-        ""Description"": ""Returns string representing json containing [(0018,6011) Sequence of Ultrasound Regions] extracted from dicom file."",
-        ""Parameters"": [
-            {
-                ""Name"": ""dicomFileId"",
-                ""Description"": ""Id of the dicom file."",
-                ""Type"": ""integer"",
-                ""IsRequired"": true
-            }
-        ]
-    }";
+  
 
     public static async Task DoTestAsync(string file, AzureOpenAIConfig azureOpenAIConfig, CancellationToken cancel)
     {
@@ -59,7 +46,7 @@ internal class FunctionCallManualRemoteTest
 
             var functionDescriptions = new List<RemoteFunctionDescription>
             {
-                JsonSerializer.Deserialize<RemoteFunctionDescription>(DicomPluginDescriptionJson)
+                JsonSerializer.Deserialize<RemoteFunctionDescription>(RemoteLlmFunctionsHost.DicomPluginDescriptionJson)
             };
 
             // Create remote functions host that will execute functions
