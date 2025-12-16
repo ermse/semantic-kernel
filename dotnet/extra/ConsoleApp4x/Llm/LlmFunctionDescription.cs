@@ -4,10 +4,10 @@ using System.Collections.Generic;
 
 namespace ConsoleApp4x;
 
-public class RemoteFunctionDescription
+public class LlmFunctionDescription
 {
     public string PluginName { get; set; }
     public string FunctionName { get; set; }
     public string Description { get; set; }
-    public List<RemoteParameterDescription> Parameters { get; set; } = new List<RemoteParameterDescription>();
+    public List<LlmFunctionParameterDescription> Parameters { get; set; } = new List<LlmFunctionParameterDescription>();
 }

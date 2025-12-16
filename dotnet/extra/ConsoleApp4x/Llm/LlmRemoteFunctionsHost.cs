@@ -14,9 +14,9 @@ namespace ConsoleApp4x;
 /// This class receives serialized function call information and routes it to the appropriate implementation.
 /// Note: This class is designed to be independent of Semantic Kernel.
 /// </summary>
-public class RemoteLlmFunctionsHost
+public class LlmRemoteFunctionsHost
 {
-    public static readonly string DicomPluginDescriptionJson = PluginDescriber.CreatePluginDescriptionJson(typeof(DicomPlugin));
+    public static readonly string DicomPluginDescriptionJson = LlmPluginDescriber.CreatePluginDescriptionJson(typeof(DicomPlugin));
 
     private static readonly JsonSerializerOptions CiJsonOptions = new JsonSerializerOptions
     {

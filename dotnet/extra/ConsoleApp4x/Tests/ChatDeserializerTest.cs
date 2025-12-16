@@ -4,34 +4,51 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text.Json;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
-using Microsoft.SemanticKernel.Connectors.AzureOpenAI;
 using MySkUtils;
+using DicomUtils;
 
-namespace ConsoleApp4x;
+namespace ConsoleApp4x.Tests;
 
-internal class FunctionCallAutoRemoteTest
+internal class ChatDeserializerTest
 {
     public static async Task DoTestAsync(string file, AzureOpenAIConfig azureOpenAIConfig, CancellationToken cancel)
     {
         try
         {
+
+            // Validate configuration
+            if (string.IsNullOrWhiteSpace(azureOpenAIConfig.ApiKey) ||
+                string.IsNullOrWhiteSpace(azureOpenAIConfig.Endpoint) ||
+                string.IsNullOrWhiteSpace(azureOpenAIConfig.Deployment) ||
+                string.IsNullOrWhiteSpace(azureOpenAIConfig.ModelId))
+            {
+                throw new InvalidOperationException("AzureOpenAI configuration is missing. Please configure ApiKey, EndPoint, and DeploymentName in appsettings.json or user secrets.");
+            }
             string result = null;
             ChatHistory chatHistory = null;
-
+            // Restore chat history from Resources/ChatHistoryDump001.json
+           
             chatHistory = await ChatHistoryDeserializer
                 .LoadChatHistoryFromJsonAsync(file, cancel);
 
+           
             using var httpClient = LlmHttpClientProvider.GetHttpClient(
                 TimeSpan.FromSeconds(180),
                 3,
                 TimeSpan.FromSeconds(5),
                 "C:\\tmp\\SemanticKernelDebug\\log.txt");
 
+            
+
+            // Create kernel with Azure OpenAI configuration
             Kernel kernel = Kernel.CreateBuilder()
                 .AddAzureOpenAIChatCompletion(
                     deploymentName: azureOpenAIConfig.Deployment,
@@ -40,33 +57,24 @@ internal class FunctionCallAutoRemoteTest
                     modelId: azureOpenAIConfig.ModelId,
                     httpClient: httpClient)
                 .Build();
-
-            var functionDescriptions = new List<RemoteFunctionDescription>
-            {
-                JsonSerializer.Deserialize<RemoteFunctionDescription>(RemoteLlmFunctionsHost.DicomPluginDescriptionJson)
-            };
-
-            // Create remote functions host that will execute functions
-            var remoteFunctionsHost = new RemoteLlmFunctionsHost();
-
-            foreach (var pluginGroup in functionDescriptions.GroupBy(f => f.PluginName))
-            {
-                var functions = RemoteFunctionWrapper.CreateFunctionsFromDescriptions(pluginGroup.ToList(), remoteFunctionsHost, cancel);
-                var plugin = KernelPluginFactory.CreateFromFunctions(pluginGroup.Key, functions);
-                kernel.Plugins.Add(plugin);
-            }
+            
+            // Add DicomPlugin to kernel so LLM can call its functions
+            //kernel.Plugins.AddFromObject(new DicomPlugin(), "DicomPlugin");
 
             var chatService = kernel.GetRequiredService<IChatCompletionService>();
 
-            try
+            for (int i = 0; i < 20; i++)
             {
-                result = await GetChatResultAsync(kernel, chatHistory, cancel);
-            }
-            catch
-            {
+                try
+                {
+                    result = await GetChatResultStreamedAsync(kernel, chatHistory, cancel);
+                }
+                catch
+                {
 
+                }
+                await Task.Delay(TimeSpan.FromSeconds(10));
             }
-
             Console.WriteLine("Kernel created successfully with Azure OpenAI configuration!");
             Console.WriteLine($"Deployment: {azureOpenAIConfig.Deployment}");
             Console.WriteLine($"Endpoint: {azureOpenAIConfig.Endpoint}");
@@ -80,18 +88,13 @@ internal class FunctionCallAutoRemoteTest
         }
     }
 
-
     private static async Task<string> GetChatResultAsync(Kernel kernel, ChatHistory chatHistory, CancellationToken cancel)
     {
+
         var chatService = kernel.GetRequiredService<IChatCompletionService>();
 
-        var executionSettings = new AzureOpenAIPromptExecutionSettings
-        {
-            FunctionChoiceBehavior = FunctionChoiceBehavior.Auto()
-        };
-
-        IReadOnlyList<ChatMessageContent> result = await chatService
-            .GetChatMessageContentsAsync(chatHistory, executionSettings, kernel, cancel)
+        var result = await chatService
+            .GetChatMessageContentsAsync(chatHistory, cancellationToken: cancel)
             .ConfigureAwait(false);
 
         if (result.Count > 0)
@@ -101,19 +104,23 @@ internal class FunctionCallAutoRemoteTest
         throw new InvalidDataException();
     }
 
-    private static void AddFunctionResultToHistory(ChatHistory chatHistory, FunctionCallContent functionCall, string result)
+    private static async Task<string> GetChatResultStreamedAsync(Kernel kernel, ChatHistory chatHistory, CancellationToken cancel)
     {
-        var functionResultContent = new FunctionResultContent(
-            functionName: functionCall.FunctionName,
-            pluginName: functionCall.PluginName,
-            callId: functionCall.Id,
-            result: result);
 
-        var message = new ChatMessageContent(
-            role: AuthorRole.Tool,
-            content: result);
-        message.Items.Add(functionResultContent);
+        var chatCompletion = kernel.GetRequiredService<IChatCompletionService>();
 
-        chatHistory.Add(message);
+        IAsyncEnumerable<StreamingChatMessageContent> resp = chatCompletion
+            .GetStreamingChatMessageContentsAsync(chatHistory, null, null, cancel);
+
+        var str = new StringBuilder();
+
+        await foreach (StreamingChatMessageContent item in resp)
+        {
+            if (item != null && !string.IsNullOrEmpty(item.Content))
+            {
+                str.Append(item.Content);
+            }
+        }
+        return str.ToString();
     }
 }

@@ -11,14 +11,14 @@ public class PluginDescriptionGenerationTest
     public void CanGeneratePluginDescription()
     {
         // Act - Get the generated description
-        var generatedJson = RemoteLlmFunctionsHost.DicomPluginDescriptionJson;
+        var generatedJson = LlmRemoteFunctionsHost.DicomPluginDescriptionJson;
 
         // Assert - Verify it's valid JSON
         Assert.NotNull(generatedJson);
         Assert.NotEmpty(generatedJson);
 
         // Parse and verify structure
-        var functionDesc = JsonSerializer.Deserialize<RemoteFunctionDescription>(generatedJson);
+        var functionDesc = JsonSerializer.Deserialize<LlmFunctionDescription>(generatedJson);
 
         Assert.NotNull(functionDesc);
         Assert.Equal("DicomPlugin", functionDesc.PluginName);
@@ -40,7 +40,7 @@ public class PluginDescriptionGenerationTest
     public void GeneratedJsonCanBeDeserialized()
     {
         // Arrange
-        var generatedJson = RemoteLlmFunctionsHost.DicomPluginDescriptionJson;
+        var generatedJson = LlmRemoteFunctionsHost.DicomPluginDescriptionJson;
 
         // Act - Parse the JSON
         var jsonDoc = JsonDocument.Parse(generatedJson);

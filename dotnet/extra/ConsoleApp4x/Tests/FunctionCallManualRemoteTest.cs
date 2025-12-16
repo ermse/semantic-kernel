@@ -42,17 +42,17 @@ internal class FunctionCallManualRemoteTest
                     httpClient: httpClient)
                 .Build();
 
-            var functionDescriptions = new List<RemoteFunctionDescription>
+            var functionDescriptions = new List<LlmFunctionDescription>
             {
-                JsonSerializer.Deserialize<RemoteFunctionDescription>(RemoteLlmFunctionsHost.DicomPluginDescriptionJson)
+                JsonSerializer.Deserialize<LlmFunctionDescription>(LlmRemoteFunctionsHost.DicomPluginDescriptionJson)
             };
 
             // Create remote functions host that will execute functions
-            var remoteFunctionsHost = new RemoteLlmFunctionsHost();
+            var remoteFunctionsHost = new LlmRemoteFunctionsHost();
 
             foreach (var pluginGroup in functionDescriptions.GroupBy(f => f.PluginName))
             {
-                var functions = RemoteFunctionWrapper
+                var functions = LlmRemoteFunctionWrapper
                     .CreateFunctionsFromDescriptions(pluginGroup.ToList(), remoteFunctionsHost, cancel);
 
                 var plugin = KernelPluginFactory.CreateFromFunctions(pluginGroup.Key, functions);
@@ -86,7 +86,7 @@ internal class FunctionCallManualRemoteTest
     /// <summary>
     /// RECOMMENDED PATTERN: Manual function invocation with full access to FunctionCallContent.Id
     /// </summary>
-    private static async Task<string> GetChatResultAsync(Kernel kernel, ChatHistory chatHistory, RemoteLlmFunctionsHost remoteFunctionsHost, CancellationToken cancel)
+    private static async Task<string> GetChatResultAsync(Kernel kernel, ChatHistory chatHistory, LlmRemoteFunctionsHost remoteFunctionsHost, CancellationToken cancel)
     {
         var chatService = kernel.GetRequiredService<IChatCompletionService>();
 

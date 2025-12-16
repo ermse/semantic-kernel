@@ -12,7 +12,7 @@ using Microsoft.SemanticKernel;
 
 namespace ConsoleApp4x;
 
-public class PluginDescriber
+public class LlmPluginDescriber
 {
     /// <summary>
     /// Creates a JSON description for a plugin type by extracting metadata from methods decorated with KernelFunctionAttribute.
@@ -22,7 +22,7 @@ public class PluginDescriber
     public static string CreatePluginDescriptionJson(Type pluginType)
     {
         var pluginName = pluginType.Name;
-        var functions = new List<RemoteFunctionDescription>();
+        var functions = new List<LlmFunctionDescription>();
 
         var methods = pluginType.GetMethods(BindingFlags.Public | BindingFlags.Instance);
 
@@ -43,7 +43,7 @@ public class PluginDescriber
             var descriptionAttr = method.GetCustomAttribute<DescriptionAttribute>();
             var description = descriptionAttr?.Description ?? string.Empty;
 
-            var parameters = new List<RemoteParameterDescription>();
+            var parameters = new List<LlmFunctionParameterDescription>();
             foreach (var param in method.GetParameters())
             {
                 var paramDescAttr = param.GetCustomAttribute<DescriptionAttribute>();
@@ -51,7 +51,7 @@ public class PluginDescriber
 
                 var paramType = GetJsonTypeName(param.ParameterType);
 
-                parameters.Add(new RemoteParameterDescription
+                parameters.Add(new LlmFunctionParameterDescription
                 {
                     Name = param.Name ?? string.Empty,
                     Description = paramDesc,
@@ -60,7 +60,7 @@ public class PluginDescriber
                 });
             }
 
-            functions.Add(new RemoteFunctionDescription
+            functions.Add(new LlmFunctionDescription
             {
                 PluginName = pluginName,
                 FunctionName = functionName,

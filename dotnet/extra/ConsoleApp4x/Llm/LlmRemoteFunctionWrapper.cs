@@ -9,11 +9,11 @@ using Microsoft.SemanticKernel;
 
 namespace ConsoleApp4x;
 
-public class RemoteFunctionWrapper
+public class LlmRemoteFunctionWrapper
 {
     public static IEnumerable<KernelFunction> CreateFunctionsFromDescriptions(
-      List<RemoteFunctionDescription> descriptions,
-      RemoteLlmFunctionsHost remoteFunctionsHost,
+      List<LlmFunctionDescription> descriptions,
+      LlmRemoteFunctionsHost remoteFunctionsHost,
       CancellationToken cancel)
     {
         foreach (var desc in descriptions)

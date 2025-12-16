@@ -2,7 +2,7 @@
 
 namespace ConsoleApp4x;
 
-public class RemoteParameterDescription
+public class LlmFunctionParameterDescription
 {
     public string Name { get; set; }
     public string Description { get; set; }
