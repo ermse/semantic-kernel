@@ -17,22 +17,6 @@ namespace ConsoleApp4x;
 
 internal class FunctionCallManualRemoteTest
 {
-    public class RemoteFunctionDescription
-    {
-        public string PluginName { get; set; }
-        public string FunctionName { get; set; }
-        public string Description { get; set; }
-        public List<RemoteParameterDescription> Parameters { get; set; } = new List<RemoteParameterDescription>();
-    }
-
-    public class RemoteParameterDescription
-    {
-        public string Name { get; set; }
-        public string Description { get; set; }
-        public string Type { get; set; }
-        public bool IsRequired { get; set; }
-    }
-
     private static readonly string DicomPluginDescriptionJson = @"
     {
         ""PluginName"": ""DicomPlugin"",
