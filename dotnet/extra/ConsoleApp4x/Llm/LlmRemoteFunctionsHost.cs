@@ -16,8 +16,6 @@ namespace ConsoleApp4x;
 /// </summary>
 public class LlmRemoteFunctionsHost
 {
-    public static readonly string DicomPluginDescriptionJson = LlmPluginDescriber.CreatePluginDescriptionJson(typeof(DicomPlugin));
-
     private static readonly JsonSerializerOptions CiJsonOptions = new JsonSerializerOptions
     {
         PropertyNameCaseInsensitive = true
@@ -70,7 +68,7 @@ public class LlmRemoteFunctionsHost
     /// <returns>The result of the remote function execution as a string.</returns>
     public async Task<string> ExecuteFunctionAsync(string functionCallJson, CancellationToken cancel)
     {
-        var functionCallData = JsonSerializer.Deserialize<FunctionCallData>(functionCallJson, CiJsonOptions);
+        var functionCallData = JsonSerializer.Deserialize<LlmToolCallInfo>(functionCallJson, CiJsonOptions);
 
         if (functionCallData == null)
         {

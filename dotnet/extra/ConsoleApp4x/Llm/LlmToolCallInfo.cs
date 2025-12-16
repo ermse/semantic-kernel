@@ -10,7 +10,7 @@ namespace ConsoleApp4x
     /// This class is designed to be independent of Semantic Kernel,
     /// allowing remote hosts to process function calls without referencing the SK library.
     /// </summary>
-    public class FunctionCallData
+    public class LlmToolCallInfo
     {
         public string Id { get; set; }
         public string PluginName { get; set; }

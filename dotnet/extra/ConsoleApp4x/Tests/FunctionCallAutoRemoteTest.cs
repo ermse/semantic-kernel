@@ -41,13 +41,15 @@ internal class FunctionCallAutoRemoteTest
                     httpClient: httpClient)
                 .Build();
 
-            var functionDescriptions = new List<LlmFunctionDescription>
-            {
-                JsonSerializer.Deserialize<LlmFunctionDescription>(LlmRemoteFunctionsHost.DicomPluginDescriptionJson)
-            };
-
             // Create remote functions host that will execute functions
             var remoteFunctionsHost = new LlmRemoteFunctionsHost();
+
+            var functionDescriptions = new List<LlmFunctionDescription>
+            {
+                JsonSerializer.Deserialize<LlmFunctionDescription>(remoteFunctionsHost.DescribeTools())
+            };
+
+    
 
             foreach (var pluginGroup in functionDescriptions.GroupBy(f => f.PluginName))
             {
