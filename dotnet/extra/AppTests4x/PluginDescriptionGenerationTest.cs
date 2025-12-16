@@ -46,15 +46,20 @@ public class PluginDescriptionGenerationTest
         // Act - Parse the JSON
         var jsonDoc = JsonDocument.Parse(generatedJson);
 
-        // Assert - Verify it's a valid JSON document
+        // Assert - Verify it's a valid JSON document with an array
         Assert.NotNull(jsonDoc);
         Assert.NotNull(jsonDoc.RootElement);
 
-        // Verify key properties exist
-        Assert.True(jsonDoc.RootElement.TryGetProperty("PluginName", out _));
-        Assert.True(jsonDoc.RootElement.TryGetProperty("FunctionName", out _));
-        Assert.True(jsonDoc.RootElement.TryGetProperty("Description", out _));
-        Assert.True(jsonDoc.RootElement.TryGetProperty("Parameters", out var parameters));
+        // Verify root is an array
+        Assert.Equal(JsonValueKind.Array, jsonDoc.RootElement.ValueKind);
+        Assert.True(jsonDoc.RootElement.GetArrayLength() > 0);
+
+        // Verify first element has expected properties
+        var firstElement = jsonDoc.RootElement[0];
+        Assert.True(firstElement.TryGetProperty("PluginName", out _));
+        Assert.True(firstElement.TryGetProperty("FunctionName", out _));
+        Assert.True(firstElement.TryGetProperty("Description", out _));
+        Assert.True(firstElement.TryGetProperty("Parameters", out var parameters));
 
         // Verify parameters is an array
         Assert.Equal(JsonValueKind.Array, parameters.ValueKind);
