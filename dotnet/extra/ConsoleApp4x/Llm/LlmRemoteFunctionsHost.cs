@@ -23,6 +23,23 @@ public class LlmRemoteFunctionsHost
         PropertyNameCaseInsensitive = true
     };
 
+    // TODO:
+    // Create a class LlmToolsRegistry.cs
+    // Create public property ServiceCollection of IServiceCollection Type on the LlmToolsRegistry.
+    // Create a public property Tools of List<Type> type on LlmToolsRegistry
+    // Outside callers can register any type in IServiceCollection.
+    // Outside callers will register types that they disignate as a llm tools on the Tools property.
+    // Add a method to DescribeTools() LlmToolsRegistry.
+    // The DescribeTools method should enumerate Tools select all types and call LlmPluginDescriber.CreatePluginDescriptionJson on each type found.
+    // Array of those descriptions will be used to pass tool calling iformation to SematicKernel to be used in Llm requests.
+    // The method ExecuteFunctionAsync upon recieving a call should:
+    //  1. Build a IServiceProvider from the IServiceCollection (if it is not built yet, singleton)
+    //  2. Get the service by PluginName from the ISeriviceProvider
+    //  3. Use reflection to gind the method by FunctionName on the that service
+    //  4. Inspect the method and instantiate all required and optional arguments except CancellationToken from the the FunctionCallData.Argument list
+    //  5. Call the method with instantiated parameters and return the result as a string.
+    // Register DicomPlugin in the IServiceCollection and Tools property on LlmToolsRegistry 
+
     /// <summary>
     /// Executes a function remotely based on serialized function call information.
     /// </summary>
@@ -49,6 +66,9 @@ public class LlmRemoteFunctionsHost
 
         throw new NotSupportedException($"Function {functionCallData.PluginName}.{functionCallData.FunctionName} is not supported for remote execution");
     }
+
+
+
 
     private async Task<string> ExecuteDicomPluginRegionsJsonAsync(FunctionCallData functionCallData, CancellationToken cancel)
     {
