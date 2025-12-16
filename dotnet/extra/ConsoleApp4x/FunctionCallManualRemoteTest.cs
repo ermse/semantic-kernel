@@ -17,13 +17,43 @@ namespace ConsoleApp4x;
 
 internal class FunctionCallManualRemoteTest
 {
+    public class RemoteFunctionDescription
+    {
+        public string PluginName { get; set; }
+        public string FunctionName { get; set; }
+        public string Description { get; set; }
+        public List<RemoteParameterDescription> Parameters { get; set; } = new List<RemoteParameterDescription>();
+    }
+
+    public class RemoteParameterDescription
+    {
+        public string Name { get; set; }
+        public string Description { get; set; }
+        public string Type { get; set; }
+        public bool IsRequired { get; set; }
+    }
+
+    private static readonly string DicomPluginDescriptionJson = @"
+    {
+        ""PluginName"": ""DicomPlugin"",
+        ""FunctionName"": ""RegionsJson"",
+        ""Description"": ""Returns string representing json containing [(0018,6011) Sequence of Ultrasound Regions] extracted from dicom file."",
+        ""Parameters"": [
+            {
+                ""Name"": ""dicomFileId"",
+                ""Description"": ""Id of the dicom file."",
+                ""Type"": ""integer"",
+                ""IsRequired"": true
+            }
+        ]
+    }";
+
     public static async Task DoTestAsync(string file, AzureOpenAIConfig azureOpenAIConfig, CancellationToken cancel)
     {
         try
         {
             string result = null;
             ChatHistory chatHistory = null;
-            // Restore chat history from Resources/ChatHistoryDump001.json
 
             chatHistory = await ChatHistoryDeserializer
                 .LoadChatHistoryFromJsonAsync(file, cancel);
@@ -34,7 +64,6 @@ internal class FunctionCallManualRemoteTest
                 TimeSpan.FromSeconds(5),
                 "C:\\tmp\\SemanticKernelDebug\\log.txt");
 
-            // Create kernel with Azure OpenAI configuration
             Kernel kernel = Kernel.CreateBuilder()
                 .AddAzureOpenAIChatCompletion(
                     deploymentName: azureOpenAIConfig.Deployment,
@@ -44,59 +73,26 @@ internal class FunctionCallManualRemoteTest
                     httpClient: httpClient)
                 .Build();
 
-            /*
-            TODO:
-            instead of adding functions to kernel by instatiating DicomPlugin
-           
-            take some sort of textual description of the plugin and it's functions
-            and make sure that textual representation is included in llm request like in sample data below.
-            So llm can make function calls.
-            The idea is to somehow add text information to the Llm request from function description without
-            having actual function and if Llm response wiht funcion call get that textual information and
-            pass it to 
-            GetFunctionResultRemotely(string functionCallJson, CancellationToken cancel)
-
-
-
+            var functionDescriptions = new List<RemoteFunctionDescription>
             {
-             ...
-             "tools": [
-                {
-                  "type": "function",
-                  "function": {
-                    "description": "Returns string representing json containing [(0018,6011) Sequence of Ultrasound Regions] extracted from dicom file.",
-                    "name": "DicomPlugin-RegionsJson",
-                    "parameters": {
-                      "type": "object",
-                      "required": [
-                        "dicomFileId"
-                      ],
-                      "properties": {
-                        "dicomFileId": {
-                          "description": "Id of the dicom file.",
-                          "type": "integer"
-                        }
-                      }
-                    },
-                    "strict": false
-                  }
-                }
-              ],
-              "tool_choice": "auto"
-            ...
+                JsonSerializer.Deserialize<RemoteFunctionDescription>(DicomPluginDescriptionJson)
+            };
+
+            // Create remote functions host that will execute functions
+            var remoteFunctionsHost = new RemoteLlmFunctionsHost();
+
+            foreach (var pluginGroup in functionDescriptions.GroupBy(f => f.PluginName))
+            {
+                var functions = CreateFunctionsFromDescriptions(pluginGroup.ToList(), remoteFunctionsHost, cancel);
+                var plugin = KernelPluginFactory.CreateFromFunctions(pluginGroup.Key, functions);
+                kernel.Plugins.Add(plugin);
             }
-
-
-            */
-
-            // Add DicomPlugin to kernel so LLM can call its functions
-            kernel.Plugins.AddFromObject(new DicomPlugin(), "DicomPlugin");
 
             var chatService = kernel.GetRequiredService<IChatCompletionService>();
 
             try
             {
-                result = await GetChatResultAsync(kernel, chatHistory, cancel);
+                result = await GetChatResultAsync(kernel, chatHistory, remoteFunctionsHost, cancel);
             }
             catch
             {
@@ -116,7 +112,75 @@ internal class FunctionCallManualRemoteTest
         }
     }
 
-    private static async Task<string> GetChatResultAsync(Kernel kernel, ChatHistory chatHistory, CancellationToken cancel)
+    private static IEnumerable<KernelFunction> CreateFunctionsFromDescriptions(
+        List<RemoteFunctionDescription> descriptions,
+        RemoteLlmFunctionsHost remoteFunctionsHost,
+        CancellationToken cancel)
+    {
+        foreach (var desc in descriptions)
+        {
+            // Create parameter metadata from the textual description
+            var parameters = desc.Parameters.Select(p => new KernelParameterMetadata(p.Name)
+            {
+                Description = p.Description,
+                ParameterType = GetTypeFromTypeName(p.Type),
+                IsRequired = p.IsRequired
+            }).ToList();
+
+            // Capture description for use in the lambda
+            var capturedDesc = desc;
+
+            // Create a function that forwards all calls to GetFunctionResultRemotely
+            // The function body doesn't contain actual business logic - it just captures
+            // the arguments and serializes them to be sent to the remote executor
+            var function = KernelFunctionFactory.CreateFromMethod(
+                method: async (KernelArguments args) =>
+                {
+                    // Serialize the function call information
+                    var functionCallJson = JsonSerializer.Serialize(new
+                    {
+                        PluginName = capturedDesc.PluginName,
+                        FunctionName = capturedDesc.FunctionName,
+                        Arguments = args
+                    });
+
+                    Console.WriteLine($"Function {capturedDesc.PluginName}.{capturedDesc.FunctionName} called, forwarding to remote execution...");
+
+                    // Forward to remote execution
+                    return await remoteFunctionsHost.ExecuteFunctionAsync(functionCallJson, cancel);
+                },
+                functionName: desc.FunctionName,
+                description: desc.Description,
+                parameters: parameters,
+                returnParameter: new KernelReturnParameterMetadata
+                {
+                    ParameterType = typeof(string),
+                    Description = "Result from remote function execution"
+                }
+            );
+
+            yield return function;
+        }
+    }
+
+    private static Type GetTypeFromTypeName(string typeName)
+    {
+        return typeName?.ToLowerInvariant() switch
+        {
+            "integer" => typeof(long),
+            "int" => typeof(int),
+            "long" => typeof(long),
+            "string" => typeof(string),
+            "boolean" => typeof(bool),
+            "bool" => typeof(bool),
+            "number" => typeof(double),
+            "double" => typeof(double),
+            "float" => typeof(float),
+            _ => typeof(object)
+        };
+    }
+
+    private static async Task<string> GetChatResultAsync(Kernel kernel, ChatHistory chatHistory, RemoteLlmFunctionsHost remoteFunctionsHost, CancellationToken cancel)
     {
         var chatService = kernel.GetRequiredService<IChatCompletionService>();
 
@@ -126,7 +190,7 @@ internal class FunctionCallManualRemoteTest
             FunctionChoiceBehavior = FunctionChoiceBehavior.Auto(autoInvoke: false)
         };
 
-        const int MaxIterations = 10; // Prevent infinite loops
+        const int MaxIterations = 10;
         int iteration = 0;
 
         while (iteration < MaxIterations)
@@ -134,7 +198,6 @@ internal class FunctionCallManualRemoteTest
             iteration++;
             Console.WriteLine($"\n=== Iteration {iteration} ===");
 
-            // Get response from LLM
             IReadOnlyList<ChatMessageContent> result = await chatService
                 .GetChatMessageContentsAsync(chatHistory, executionSettings, kernel, cancel)
                 .ConfigureAwait(false);
@@ -145,36 +208,18 @@ internal class FunctionCallManualRemoteTest
             }
 
             var messageContent = result[0];
-
-            // Add the assistant's response to chat history
             chatHistory.Add(messageContent);
 
-            // Inspect the response for function calls
             IEnumerable<FunctionCallContent> functionCalls = FunctionCallContent.GetFunctionCalls(messageContent);
 
             if (!functionCalls.Any())
             {
-                // No function calls - we have the final response
                 Console.WriteLine("No function calls found. Returning final response.");
                 return messageContent.Content ?? string.Empty;
             }
 
-            // Process each function call - serialize and call remotely
             Console.WriteLine($"Found {functionCalls.Count()} function call(s)");
 
-            // Serialize function calls to JSON array
-            var serializedFunctionCalls = functionCalls.Select(fc => new
-            {
-                Id = fc.Id,
-                PluginName = fc.PluginName,
-                FunctionName = fc.FunctionName,
-                Arguments = fc.Arguments
-            }).ToList();
-
-            string functionCallsJson = JsonSerializer.Serialize(serializedFunctionCalls);
-            Console.WriteLine($"Serialized function calls: {functionCallsJson}");
-
-            // Call remote function execution for each function call
             foreach (FunctionCallContent functionCall in functionCalls)
             {
                 Console.WriteLine($"  Function: {functionCall.PluginName}.{functionCall.FunctionName}");
@@ -183,7 +228,6 @@ internal class FunctionCallManualRemoteTest
 
                 try
                 {
-                    // Validate the function call
                     if (functionCall.Exception is not null)
                     {
                         string errorMessage = $"Error: Function call processing failed. {functionCall.Exception.Message}";
@@ -192,7 +236,6 @@ internal class FunctionCallManualRemoteTest
                         continue;
                     }
 
-                    // Serialize this specific function call
                     var singleFunctionCallJson = JsonSerializer.Serialize(new
                     {
                         Id = functionCall.Id,
@@ -201,13 +244,10 @@ internal class FunctionCallManualRemoteTest
                         Arguments = functionCall.Arguments
                     });
 
-                    // Execute the function remotely
                     Console.WriteLine($"  Executing function remotely...");
-                    string resultValue = await GetFunctionResultRemotely(singleFunctionCallJson, cancel);
+                    string resultValue = await remoteFunctionsHost.ExecuteFunctionAsync(singleFunctionCallJson, cancel);
 
                     Console.WriteLine($"  Result: {resultValue.Substring(0, Math.Min(200, resultValue.Length))}...");
-
-                    // Add the function result to chat history
                     AddFunctionResultToHistory(chatHistory, functionCall, resultValue);
                 }
                 catch (Exception ex)
@@ -217,139 +257,24 @@ internal class FunctionCallManualRemoteTest
                     AddFunctionResultToHistory(chatHistory, functionCall, errorMessage);
                 }
             }
-
-            // Continue the loop to send function results back to the LLM
         }
 
         throw new InvalidOperationException($"Maximum iterations ({MaxIterations}) reached without getting a final response.");
     }
 
-    private static async Task<string> GetFunctionResultRemotely(string functionCallJson, CancellationToken cancel)
-    {
-        // Deserialize the function call
-        var options = new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true
-        };
-
-        var functionCallData = JsonSerializer.Deserialize<FunctionCallData>(functionCallJson, options);
-
-        if (functionCallData == null)
-        {
-            throw new InvalidOperationException("Failed to deserialize function call JSON");
-        }
-
-        Console.WriteLine($"Remote execution - Plugin: {functionCallData.PluginName}, Function: {functionCallData.FunctionName}");
-
-        // Check if this is a DicomPlugin call
-        if (functionCallData.PluginName == "DicomPlugin" && functionCallData.FunctionName == "RegionsJson")
-        {
-            // Extract the dicomFileId parameter from Arguments
-            if (functionCallData.Arguments == null)
-            {
-                throw new InvalidOperationException("Function arguments are null");
-            }
-
-            long dicomFileId = 0;
-
-            // Arguments is a KernelArguments which is essentially a dictionary
-            if (functionCallData.Arguments.ContainsKey("dicomFileId"))
-            {
-                var fileIdValue = functionCallData.Arguments["dicomFileId"];
-                if (fileIdValue != null)
-                {
-                    if (fileIdValue is long longValue)
-                    {
-                        dicomFileId = longValue;
-                    }
-                    else if (fileIdValue is int intValue)
-                    {
-                        dicomFileId = intValue;
-                    }
-                    else if (fileIdValue is string strValue && long.TryParse(strValue, out long parsedValue))
-                    {
-                        dicomFileId = parsedValue;
-                    }
-                    else if (fileIdValue is JsonElement jsonElement)
-                    {
-                        // Handle JsonElement properly based on its ValueKind
-                        switch (jsonElement.ValueKind)
-                        {
-                            case JsonValueKind.Number:
-                                if (jsonElement.TryGetInt64(out long longVal))
-                                {
-                                    dicomFileId = longVal;
-                                }
-                                else
-                                {
-                                    throw new InvalidOperationException($"Cannot convert JsonElement number to long: {jsonElement}");
-                                }
-                                break;
-                            case JsonValueKind.String:
-                                if (long.TryParse(jsonElement.GetString(), out long parsedLong))
-                                {
-                                    dicomFileId = parsedLong;
-                                }
-                                else
-                                {
-                                    throw new InvalidOperationException($"Cannot parse JsonElement string to long: {jsonElement.GetString()}");
-                                }
-                                break;
-                            default:
-                                throw new InvalidOperationException($"Unexpected JsonElement ValueKind for dicomFileId: {jsonElement.ValueKind}");
-                        }
-                    }
-                    else
-                    {
-                        // Fallback: try using Convert.ToInt64 for other types
-                        try
-                        {
-                            dicomFileId = Convert.ToInt64(fileIdValue);
-                        }
-                        catch (InvalidCastException ex)
-                        {
-                            throw new InvalidOperationException($"Cannot convert dicomFileId value of type {fileIdValue.GetType()} to long", ex);
-                        }
-                    }
-                }
-            }
-
-            Console.WriteLine($"Calling DicomPlugin.RegionsJsonAsync with dicomFileId: {dicomFileId}");
-
-            // Create a new instance of DicomPlugin and call the function
-            var dicomPlugin = new DicomPlugin();
-            string result = await dicomPlugin.RegionsJsonAsync(dicomFileId);
-
-            return result;
-        }
-
-        throw new NotSupportedException($"Function {functionCallData.PluginName}.{functionCallData.FunctionName} is not supported for remote execution");
-    }
-
     private static void AddFunctionResultToHistory(ChatHistory chatHistory, FunctionCallContent functionCall, string result)
     {
-        // Create a FunctionResultContent
         var functionResultContent = new FunctionResultContent(
             functionName: functionCall.FunctionName,
             pluginName: functionCall.PluginName,
             callId: functionCall.Id,
             result: result);
 
-        // Create a chat message with the tool role and add the function result
         var message = new ChatMessageContent(
             role: AuthorRole.Tool,
             content: result);
         message.Items.Add(functionResultContent);
 
         chatHistory.Add(message);
-    }
-
-    // Helper class for deserializing function call data
-    private class FunctionCallData
-    {
-        public string? Id { get; set; }
-        public string? PluginName { get; set; }
-        public string? FunctionName { get; set; }
-        public KernelArguments? Arguments { get; set; }
     }
 }
