@@ -15,7 +15,7 @@ namespace ConsoleApp4x;
 /// </summary>
 internal class RemoteLlmFunctionsHost
 {
-    // TODO: move this property to the RemoteLlmFunctionsHost
+    // TODO: create this description from the Plugin's Type
     public static readonly string DicomPluginDescriptionJson = @"
     {
         ""PluginName"": ""DicomPlugin"",
@@ -152,6 +152,9 @@ internal class RemoteLlmFunctionsHost
         }
     }
 
+
+    // TODO: replace KernelArguments with our own classes,
+    // so remote host do not have to refernece semantic kernel
     /// <summary>
     /// Helper class for deserializing function call data.
     /// </summary>

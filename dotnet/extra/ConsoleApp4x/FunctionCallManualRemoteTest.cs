@@ -105,6 +105,7 @@ internal class FunctionCallManualRemoteTest
             // The function body doesn't contain actual business logic - it just captures
             // the arguments and serializes them to be sent to the remote executor
             var function = KernelFunctionFactory.CreateFromMethod(
+                // TODO: add test CancelationToken to the function
                 method: async (KernelArguments args) =>
                 {
                     // Serialize the function call information
