@@ -86,17 +86,105 @@ public class PluginDescriptionGenerationTest
         options.Converters.Add(new TypeJsonConverter());
 
         var json = JsonSerializer.Serialize(metatadata, options);
+
+        /* TODO:
+         I am recieving an exception here:
+         Message=Deserialization of types without a parameterless constructor, a singular parameterized constructor, or a parameterized constructor annotated with 'JsonConstructorAttribute' is not supported. Type 'Microsoft.SemanticKernel.KernelFunctionMetadata'
+         apparently JsonSerializer is unable to instantiate KernelFunctionMetadata.
+         Please create a Converter for it.
+
+        this how the json looks like Name is Name of the function should be used when calling KernelFunctionMetadata constructor:
+        [
+          {
+            "Name": "Uppercase",
+            "PluginName": "StaticTextPluginDemo",
+            "Description": "Change all string chars to uppercase",
+            "Parameters": [
+              {
+                "Name": "input",
+                "Description": "Text to uppercase",
+                "DefaultValue": null,
+                "IsRequired": true,
+                "Schema": {
+                  "description": "Text to uppercase",
+                  "type": "string"
+                }
+              }
+            ],
+            "ReturnParameter": {
+              "Description": "",
+              "ParameterType": "System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089",
+              "Schema": {
+                "type": "string"
+              }
+            },
+            "AdditionalProperties": {}
+          },
+          {
+            "Name": "AppendDay",
+            "PluginName": "StaticTextPluginDemo",
+            "Description": "Append the day variable",
+            "Parameters": [
+              {
+                "Name": "input",
+                "Description": "Text to append to",
+                "DefaultValue": null,
+                "IsRequired": true,
+                "Schema": {
+                  "description": "Text to append to",
+                  "type": "string"
+                }
+              },
+              {
+                "Name": "day",
+                "Description": "Value of the day to append",
+                "DefaultValue": null,
+                "IsRequired": true,
+                "Schema": {
+                  "description": "Value of the day to append",
+                  "type": "string"
+                }
+              }
+            ],
+            "ReturnParameter": {
+              "Description": "",
+              "ParameterType": "System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089",
+              "Schema": {
+                "type": "string"
+              }
+            },
+            "AdditionalProperties": {}
+          },
+          {
+            "Name": "RegionsJson",
+            "PluginName": "DicomPlugin",
+            "Description": "Returns string representing json containing [(0018,6011) Sequence of Ultrasound Regions] extracted from dicom file.",
+            "Parameters": [
+              {
+                "Name": "dicomFileId",
+                "Description": "Id of the dicom file.",
+                "DefaultValue": null,
+                "IsRequired": true,
+                "Schema": {
+                  "description": "Id of the dicom file.",
+                  "type": "integer"
+                }
+              }
+            ],
+            "ReturnParameter": {
+              "Description": "",
+              "ParameterType": "System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089",
+              "Schema": {
+                "type": "string"
+              }
+            },
+            "AdditionalProperties": {}
+          }
+        ]
+         */
         IList<KernelFunctionMetadata> deserialized = JsonSerializer.Deserialize<IList<KernelFunctionMetadata>>(json, options);
 
-        /*
-        // I am recieving an exception here:
-        // {"Serialization and deserialization of 'System.Type' instances is not supported. Path: $.ReturnParameter.ParameterType."}
-        // could you please search how the code in SemanticKernel (exluding my Extra folder)
-        // solves this issue when creating tool description for llm request
-        var json = JsonSerializer.Serialize(metatadata);
-        var deserializedMetadata = JsonSerializer.Deserialize<IList<KernelFunctionMetadata>>(json);
-        */
-        Assert.Equal(2, deserialized.Count);
+          Assert.Equal(2, deserialized.Count);
         Assert.Equal("StaticTextPluginDemo", deserialized[0].PluginName);
     }
 
