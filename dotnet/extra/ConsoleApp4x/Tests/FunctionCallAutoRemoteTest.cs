@@ -18,68 +18,57 @@ internal class FunctionCallAutoRemoteTest
 {
     public static async Task DoTestAsync(string file, AzureOpenAIConfig azureOpenAIConfig, CancellationToken cancel)
     {
+        string result = null;
+        ChatHistory chatHistory = null;
+
+        chatHistory = await ChatHistoryDeserializer
+            .LoadChatHistoryFromJsonAsync(file, cancel);
+
+        using var httpClient = LlmHttpClientProvider.GetHttpClient(
+            TimeSpan.FromSeconds(180),
+            3,
+            TimeSpan.FromSeconds(5),
+            "C:\\tmp\\SemanticKernelDebug\\log.txt");
+
+        Kernel kernel = Kernel.CreateBuilder()
+            .AddAzureOpenAIChatCompletion(
+                deploymentName: azureOpenAIConfig.Deployment,
+                endpoint: azureOpenAIConfig.Endpoint,
+                apiKey: azureOpenAIConfig.ApiKey,
+                modelId: azureOpenAIConfig.ModelId,
+                httpClient: httpClient)
+            .Build();
+
+        // Create remote functions host that will execute functions
+        var remoteFunctionsHost = new LlmRemoteFunctionsHost();
+
+        var functionDescriptions =
+            JsonSerializer.Deserialize<List<LlmFunctionDescription>>(remoteFunctionsHost.DescribeTools());
+
+        foreach (var pluginGroup in functionDescriptions.GroupBy(f => f.PluginName))
+        {
+            var functions = LlmRemoteFunctionWrapper.CreateFunctionsFromDescriptions(pluginGroup.ToList(), remoteFunctionsHost, cancel);
+            var plugin = KernelPluginFactory.CreateFromFunctions(pluginGroup.Key, functions);
+            kernel.Plugins.Add(plugin);
+        }
+
+        var chatService = kernel.GetRequiredService<IChatCompletionService>();
+
         try
         {
-            string result = null;
-            ChatHistory chatHistory = null;
-
-            chatHistory = await ChatHistoryDeserializer
-                .LoadChatHistoryFromJsonAsync(file, cancel);
-
-            using var httpClient = LlmHttpClientProvider.GetHttpClient(
-                TimeSpan.FromSeconds(180),
-                3,
-                TimeSpan.FromSeconds(5),
-                "C:\\tmp\\SemanticKernelDebug\\log.txt");
-
-            Kernel kernel = Kernel.CreateBuilder()
-                .AddAzureOpenAIChatCompletion(
-                    deploymentName: azureOpenAIConfig.Deployment,
-                    endpoint: azureOpenAIConfig.Endpoint,
-                    apiKey: azureOpenAIConfig.ApiKey,
-                    modelId: azureOpenAIConfig.ModelId,
-                    httpClient: httpClient)
-                .Build();
-
-            // Create remote functions host that will execute functions
-            var remoteFunctionsHost = new LlmRemoteFunctionsHost();
-
-            var functionDescriptions = new List<LlmFunctionDescription>
-            {
-                JsonSerializer.Deserialize<LlmFunctionDescription>(remoteFunctionsHost.DescribeTools())
-            };
-
-    
-
-            foreach (var pluginGroup in functionDescriptions.GroupBy(f => f.PluginName))
-            {
-                var functions = LlmRemoteFunctionWrapper.CreateFunctionsFromDescriptions(pluginGroup.ToList(), remoteFunctionsHost, cancel);
-                var plugin = KernelPluginFactory.CreateFromFunctions(pluginGroup.Key, functions);
-                kernel.Plugins.Add(plugin);
-            }
-
-            var chatService = kernel.GetRequiredService<IChatCompletionService>();
-
-            try
-            {
-                result = await GetChatResultAsync(kernel, chatHistory, cancel);
-            }
-            catch
-            {
-
-            }
-
-            Console.WriteLine("Kernel created successfully with Azure OpenAI configuration!");
-            Console.WriteLine($"Deployment: {azureOpenAIConfig.Deployment}");
-            Console.WriteLine($"Endpoint: {azureOpenAIConfig.Endpoint}");
-            Console.WriteLine($"Model ID: {azureOpenAIConfig.ModelId ?? "Not specified"}");
-            Console.WriteLine($"Chat history loaded with {chatHistory.Count} messages");
-            Console.WriteLine($"Response: {result}");
+            result = await GetChatResultAsync(kernel, chatHistory, cancel);
         }
-        catch (Exception ex)
+        catch
         {
-            Console.WriteLine($"Error: {ex.Message}");
+
         }
+
+        Console.WriteLine("Kernel created successfully with Azure OpenAI configuration!");
+        Console.WriteLine($"Deployment: {azureOpenAIConfig.Deployment}");
+        Console.WriteLine($"Endpoint: {azureOpenAIConfig.Endpoint}");
+        Console.WriteLine($"Model ID: {azureOpenAIConfig.ModelId ?? "Not specified"}");
+        Console.WriteLine($"Chat history loaded with {chatHistory.Count} messages");
+        Console.WriteLine($"Response: {result}");
     }
 
 

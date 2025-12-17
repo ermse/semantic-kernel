@@ -21,6 +21,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Connectors\Connectors.AzureOpenAI\Connectors.AzureOpenAI.csproj" />
     <ProjectReference Include="..\..\src\SemanticKernel.Abstractions\SemanticKernel.Abstractions.csproj" />
+    <ProjectReference Include="..\MyPlugins\MyPlugins.csproj" />
     <ProjectReference Include="..\MySkUtils\MySkUtils.csproj" />
     <ProjectReference Include="..\DicomUtils\DicomUtils.csproj" />
   </ItemGroup>

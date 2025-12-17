@@ -17,6 +17,7 @@
   <ItemGroup>
     <ProjectReference Include="..\ConsoleApp4x\ConsoleApp4x.csproj" />
     <ProjectReference Include="..\DicomUtils\DicomUtils.csproj" />
+    <ProjectReference Include="..\MyPlugins\MyPlugins.csproj" />
     <ProjectReference Include="..\MySkUtils\MySkUtils.csproj" />
   </ItemGroup>
 

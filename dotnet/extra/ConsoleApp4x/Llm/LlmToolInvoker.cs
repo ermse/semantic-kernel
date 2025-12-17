@@ -30,23 +30,23 @@ public class LlmToolInvoker
     /// <summary>
     /// Executes a function based on the provided function call data.
     /// </summary>
-    /// <param name="functionCallData">The function call data containing plugin name, function name, and arguments.</param>
+    /// <param name="toolCallInfo">The function call data containing plugin name, function name, and arguments.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The result of the function execution as a string.</returns>
-    public async Task<string> ExecuteFunctionAsync(LlmToolCallInfo functionCallData, CancellationToken cancellationToken)
+    public async Task<string> ExecuteFunctionAsync(LlmToolCallInfo toolCallInfo, CancellationToken cancellationToken)
     {
-        if (functionCallData == null)
+        if (toolCallInfo == null)
         {
-            throw new ArgumentNullException(nameof(functionCallData));
+            throw new ArgumentNullException(nameof(toolCallInfo));
         }
 
         // Find the tool type by plugin name
         var toolType = _registry.Tools.FirstOrDefault(t =>
-            string.Equals(t.Name, functionCallData.PluginName, StringComparison.OrdinalIgnoreCase));
+            string.Equals(t.Name, toolCallInfo.PluginName, StringComparison.OrdinalIgnoreCase));
 
         if (toolType == null)
         {
-            throw new InvalidOperationException($"Plugin '{functionCallData.PluginName}' is not registered.");
+            throw new InvalidOperationException($"Plugin '{toolCallInfo.PluginName}' is not registered.");
         }
 
         // Get the service instance
@@ -55,19 +55,19 @@ public class LlmToolInvoker
 
         if (serviceInstance == null)
         {
-            throw new InvalidOperationException($"Failed to resolve service for plugin '{functionCallData.PluginName}'.");
+            throw new InvalidOperationException($"Failed to resolve service for plugin '{toolCallInfo.PluginName}'.");
         }
 
         // Find the method by function name (check both with and without Async suffix)
-        var method = FindMethod(toolType, functionCallData.FunctionName);
+        var method = FindMethod(toolType, toolCallInfo.FunctionName);
 
         if (method == null)
         {
-            throw new InvalidOperationException($"Function '{functionCallData.FunctionName}' not found on plugin '{functionCallData.PluginName}'.");
+            throw new InvalidOperationException($"Function '{toolCallInfo.FunctionName}' not found on plugin '{toolCallInfo.PluginName}'.");
         }
 
         // Build method parameters
-        var parameters = BuildMethodParameters(method, functionCallData.Arguments, cancellationToken);
+        var parameters = BuildMethodParameters(method, toolCallInfo.Arguments, cancellationToken);
 
         // Invoke the method
         var result = method.Invoke(serviceInstance, parameters);
