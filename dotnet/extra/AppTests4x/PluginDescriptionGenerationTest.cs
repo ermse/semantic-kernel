@@ -2,6 +2,7 @@
 
 using System.Text.Json;
 using ConsoleApp4x;
+using ConsoleApp4x.Llm;
 using DicomUtils;
 using Microsoft.SemanticKernel;
 using MyPlugins;
@@ -72,21 +73,31 @@ public class PluginDescriptionGenerationTest
     /// <summary>
     /// Tests whether a plugin description can be generated using the kernel.
     /// </summary>
-    //[Fact]
+    [Fact]
     public void CanGeneratePluginDescriptionUsingKernel()
     {
+       
         Kernel kernel = new Kernel();
         kernel.ImportPluginFromType<StaticTextPluginDemo>();
         kernel.ImportPluginFromType<DicomPlugin>();
         var metatadata = kernel.Plugins.GetFunctionsMetadata();
+
+        var options = new JsonSerializerOptions() { WriteIndented = true };
+        options.Converters.Add(new TypeJsonConverter());
+
+        var json = JsonSerializer.Serialize(metatadata, options);
+        IList<KernelFunctionMetadata> deserialized = JsonSerializer.Deserialize<IList<KernelFunctionMetadata>>(json, options);
+
+        /*
         // I am recieving an exception here:
         // {"Serialization and deserialization of 'System.Type' instances is not supported. Path: $.ReturnParameter.ParameterType."}
         // could you please search how the code in SemanticKernel (exluding my Extra folder)
         // solves this issue when creating tool description for llm request
         var json = JsonSerializer.Serialize(metatadata);
         var deserializedMetadata = JsonSerializer.Deserialize<IList<KernelFunctionMetadata>>(json);
-        Assert.Equal(2, deserializedMetadata.Count);
-        Assert.Equal("StaticTextPluginDemo", deserializedMetadata[0].PluginName);
+        */
+        Assert.Equal(2, deserialized.Count);
+        Assert.Equal("StaticTextPluginDemo", deserialized[0].PluginName);
     }
 
 }

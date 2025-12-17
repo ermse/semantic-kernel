@@ -20,11 +20,12 @@ public class LlmPluginCollectionDescriber
         kernel.ImportPluginFromType<StaticTextPluginDemo>();
         kernel.ImportPluginFromType<DicomPlugin>();
         var metatadata = kernel.Plugins.GetFunctionsMetadata();
-        // I am recieving an exception here:
-        // {"Serialization and deserialization of 'System.Type' instances is not supported. Path: $.ReturnParameter.ParameterType."}
-        // Please create a solution which utilizes JsonSerializer extensibility to serialize and then deserialize
-        // Type information as string containng full type name e.g. System.String
-        var json = JsonSerializer.Serialize(metatadata);
+        
+        var options = new JsonSerializerOptions();
+        options.Converters.Add(new TypeJsonConverter());
+
+        var json = JsonSerializer.Serialize(metatadata, options);
+        IList<KernelFunctionMetadata> deserialized = JsonSerializer.Deserialize<IList<KernelFunctionMetadata>>(json, options);
         return json;
     }
 }
