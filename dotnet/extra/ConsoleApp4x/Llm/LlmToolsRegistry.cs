@@ -7,6 +7,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.SemanticKernel;
 
 namespace ConsoleApp4x;
 
@@ -36,56 +37,21 @@ public class LlmToolsRegistry
     /// <returns>A JSON array string containing descriptions of all registered tools.</returns>
     public string DescribeTools()
     {
-        var descriptions = new List<string>();
-
+        Kernel k = new Kernel(this.GetServiceProvider());
         foreach (var toolType in this.Tools)
         {
-            var description = LlmPluginDescriber.CreatePluginDescriptionJson(toolType);
-            descriptions.Add(description);
+            var plugin = KernelPluginFactory.CreateFromType(toolType, toolType.Name, k.Services);
+            k.Plugins.Add(plugin);
         }
+        IList<KernelFunctionMetadata> metadata = k.Plugins.GetFunctionsMetadata();
 
-        if (descriptions.Count == 0)
-        {
-            return "[]";
-        }
-
-        if (descriptions.Count == 1)
-        {
-            // If single tool returns single object, wrap in array; if array, return as-is
-            var single = descriptions[0];
-            if (single.TrimStart().StartsWith("[", StringComparison.Ordinal))
-            {
-                return single;
-            }
-            return "[" + single + "]";
-        }
-
-        // Combine all descriptions into a single array
-        var combined = new List<object>();
-        foreach (var desc in descriptions)
-        {
-            var trimmed = desc.Trim();
-            if (trimmed.StartsWith("[", StringComparison.Ordinal))
-            {
-                // It's an array, parse and add individual items
-                var items = JsonSerializer.Deserialize<List<object>>(trimmed);
-                if (items != null)
-                {
-                    combined.AddRange(items);
-                }
-            }
-            else
-            {
-                // It's a single object
-                var item = JsonSerializer.Deserialize<object>(trimmed);
-                if (item != null)
-                {
-                    combined.Add(item);
-                }
-            }
-        }
-
-        return JsonSerializer.Serialize(combined);
+        var options = new JsonSerializerOptions();
+#if DEBUG
+        options.WriteIndented = true;
+#endif
+        options.Converters.Add(new TypeJsonConverter());
+        var json = JsonSerializer.Serialize(metadata, options);
+        return json;
     }
 
     /// <summary>

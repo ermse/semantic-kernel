@@ -30,11 +30,11 @@ public class ScPluginDescriptioniGenerationTest
 
         var options = new JsonSerializerOptions() { WriteIndented = true };
         options.Converters.Add(new TypeJsonConverter());
-        options.Converters.Add(new KernelFunctionMetadataJsonConverter());
-        options.Converters.Add(new KernelParameterMetadataJsonConverter());
+
 
         var json = JsonSerializer.Serialize(metatadata, options);
-
+        options.Converters.Add(new KernelFunctionMetadataJsonConverter());
+        options.Converters.Add(new KernelParameterMetadataJsonConverter());
         IList<KernelFunctionMetadata> deserialized = JsonSerializer.Deserialize<IList<KernelFunctionMetadata>>(json, options);
 
         Assert.Equal(3, deserialized.Count);

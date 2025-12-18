@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using ConsoleApp4x.Llm;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.AzureOpenAI;
@@ -42,12 +43,14 @@ internal class FunctionCallAutoRemoteTest
         // Create remote functions host that will execute functions
         var remoteFunctionsHost = new LlmRemoteFunctionsHost();
 
-        var functionDescriptions =
-            JsonSerializer.Deserialize<List<LlmFunctionDescription>>(remoteFunctionsHost.DescribeTools());
+        IList<KernelFunctionMetadata> metadata =
+            LlmServiceFacingHost.GetFunctionMetadata(remoteFunctionsHost.DescribeTools());
 
-        foreach (var pluginGroup in functionDescriptions.GroupBy(f => f.PluginName))
+
+        foreach (var pluginGroup in metadata.GroupBy(f => f.PluginName))
         {
-            var functions = LlmRemoteFunctionWrapper.CreateFunctionsFromDescriptions(pluginGroup.ToList(), remoteFunctionsHost, cancel);
+            var functions = ScLlmRemoteFunctionWrapper
+                .CreateFunctionsFromDescriptions(pluginGroup.ToList(), remoteFunctionsHost, cancel);
             var plugin = KernelPluginFactory.CreateFromFunctions(pluginGroup.Key, functions);
             kernel.Plugins.Add(plugin);
         }

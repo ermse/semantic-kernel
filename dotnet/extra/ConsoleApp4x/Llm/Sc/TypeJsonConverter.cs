@@ -14,6 +14,6 @@ public class TypeJsonConverter : JsonConverter<Type>
 
     public override void Write(Utf8JsonWriter writer, Type value, JsonSerializerOptions options)
     {
-        writer.WriteStringValue(value.AssemblyQualifiedName);
+        writer.WriteStringValue($"{value.FullName}, {value.Assembly.GetName().Name}");
     }
 }
