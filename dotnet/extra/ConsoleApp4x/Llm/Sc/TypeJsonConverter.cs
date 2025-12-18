@@ -2,7 +2,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace ConsoleApp4x.Llm;
+namespace ConsoleApp4x;
 
 public class TypeJsonConverter : JsonConverter<Type>
 {

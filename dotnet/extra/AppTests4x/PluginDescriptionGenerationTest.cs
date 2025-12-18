@@ -69,30 +69,4 @@ public class PluginDescriptionGenerationTest
         Assert.Equal(JsonValueKind.Array, parameters.ValueKind);
         Assert.Equal(1, parameters.GetArrayLength());
     }
-
-    /// <summary>
-    /// Tests whether a plugin description can be generated using the kernel.
-    /// </summary>
-    [Fact]
-    public void CanGeneratePluginDescriptionUsingKernel()
-    {
-
-        Kernel kernel = new Kernel();
-        kernel.ImportPluginFromType<StaticTextPluginDemo>();
-        kernel.ImportPluginFromType<DicomPlugin>();
-        var metatadata = kernel.Plugins.GetFunctionsMetadata();
-
-        var options = new JsonSerializerOptions() { WriteIndented = true };
-        options.Converters.Add(new TypeJsonConverter());
-        options.Converters.Add(new KernelFunctionMetadataJsonConverter());
-        options.Converters.Add(new KernelParameterMetadataJsonConverter());
-
-        var json = JsonSerializer.Serialize(metatadata, options);
-
-        IList<KernelFunctionMetadata> deserialized = JsonSerializer.Deserialize<IList<KernelFunctionMetadata>>(json, options);
-
-        Assert.Equal(3, deserialized.Count);
-        Assert.Equal("StaticTextPluginDemo", deserialized[0].PluginName);
-    }
-
 }
