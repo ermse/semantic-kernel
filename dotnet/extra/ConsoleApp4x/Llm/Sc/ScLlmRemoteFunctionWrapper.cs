@@ -23,14 +23,6 @@ public class ScLlmRemoteFunctionWrapper
     {
         foreach (var desc in descriptions)
         {
-            // Create parameter metadata from the textual description
-            var parameters = desc.Parameters.Select(p => new KernelParameterMetadata(p.Name)
-            {
-                Description = p.Description,
-                ParameterType = GetTypeFromTypeName(p.Type),
-                IsRequired = p.IsRequired
-            }).ToList();
-
             // Capture description for use in the lambda
             var capturedDesc = desc;
 
@@ -73,18 +65,18 @@ public class ScLlmRemoteFunctionWrapper
                     {
                         Id = (string?)null, // No Id available in automatic invocation without a filter
                         PluginName = capturedDesc.PluginName,
-                        FunctionName = capturedDesc.FunctionName,
+                        FunctionName = capturedDesc.Name,
                         Arguments = args
                     });
 
-                    Console.WriteLine($"Function {capturedDesc.PluginName}.{capturedDesc.FunctionName} called (automatic invocation - Id not available), forwarding to remote execution...");
+                    Console.WriteLine($"Function {capturedDesc.PluginName}.{capturedDesc.Name} called (automatic invocation - Id not available), forwarding to remote execution...");
 
                     // Forward to remote execution
                     return await remoteFunctionsHost.ExecuteFunctionAsync(functionCallJson, cancel);
                 },
-                functionName: desc.FunctionName,
+                functionName: desc.Name,
                 description: desc.Description,
-                parameters: parameters,
+                parameters: desc.Parameters,
                 returnParameter: new KernelReturnParameterMetadata
                 {
                     ParameterType = typeof(string),
@@ -95,21 +87,5 @@ public class ScLlmRemoteFunctionWrapper
             yield return function;
         }
 
-    }
-    private static Type GetTypeFromTypeName(string typeName)
-    {
-        return typeName?.ToLowerInvariant() switch
-        {
-            "integer" => typeof(long),
-            "int" => typeof(int),
-            "long" => typeof(long),
-            "string" => typeof(string),
-            "boolean" => typeof(bool),
-            "bool" => typeof(bool),
-            "number" => typeof(double),
-            "double" => typeof(double),
-            "float" => typeof(float),
-            _ => typeof(object)
-        };
     }
 }

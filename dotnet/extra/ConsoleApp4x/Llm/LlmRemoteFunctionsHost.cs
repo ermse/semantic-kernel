@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using DicomUtils;
+using MyPlugins;
 
 namespace ConsoleApp4x;
 
@@ -33,6 +34,7 @@ public class LlmRemoteFunctionsHost
 
         // Register DicomPlugin in the registry
         _toolsRegistry.RegisterTool<DicomPlugin>();
+        _toolsRegistry.RegisterTool<StaticTextPluginDemo>();
     }
 
     /// <summary>
