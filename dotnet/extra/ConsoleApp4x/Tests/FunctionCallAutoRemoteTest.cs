@@ -15,9 +15,9 @@ using MySkUtils;
 
 namespace ConsoleApp4x;
 
-internal class FunctionCallAutoRemoteTest
+internal static class FunctionCallAutoRemoteTest
 {
-    public static async Task DoTestAsync(string file, AzureOpenAIConfig azureOpenAIConfig, CancellationToken cancel)
+    public static async Task DoTestAsync(string file, Kernel kernel, CancellationToken cancel)
     {
         string result = null;
         ChatHistory chatHistory = null;
@@ -25,20 +25,7 @@ internal class FunctionCallAutoRemoteTest
         chatHistory = await ChatHistoryDeserializer
             .LoadChatHistoryFromJsonAsync(file, cancel);
 
-        using var httpClient = LlmHttpClientProvider.GetHttpClient(
-            TimeSpan.FromSeconds(180),
-            3,
-            TimeSpan.FromSeconds(5),
-            "C:\\tmp\\SemanticKernelDebug\\log.txt");
-
-        Kernel kernel = Kernel.CreateBuilder()
-            .AddAzureOpenAIChatCompletion(
-                deploymentName: azureOpenAIConfig.Deployment,
-                endpoint: azureOpenAIConfig.Endpoint,
-                apiKey: azureOpenAIConfig.ApiKey,
-                modelId: azureOpenAIConfig.ModelId,
-                httpClient: httpClient)
-            .Build();
+        Console.WriteLine($"Chat history loaded with {chatHistory.Count} messages");
 
         // Create remote functions host that will execute functions
         var remoteFunctionsHost = new LlmRemoteFunctionsHost();
@@ -63,14 +50,8 @@ internal class FunctionCallAutoRemoteTest
         }
         catch
         {
-
+            throw;
         }
-
-        Console.WriteLine("Kernel created successfully with Azure OpenAI configuration!");
-        Console.WriteLine($"Deployment: {azureOpenAIConfig.Deployment}");
-        Console.WriteLine($"Endpoint: {azureOpenAIConfig.Endpoint}");
-        Console.WriteLine($"Model ID: {azureOpenAIConfig.ModelId ?? "Not specified"}");
-        Console.WriteLine($"Chat history loaded with {chatHistory.Count} messages");
         Console.WriteLine($"Response: {result}");
     }
 
@@ -79,7 +60,7 @@ internal class FunctionCallAutoRemoteTest
     {
         var chatService = kernel.GetRequiredService<IChatCompletionService>();
 
-        var executionSettings = new AzureOpenAIPromptExecutionSettings
+        var executionSettings = new PromptExecutionSettings
         {
             FunctionChoiceBehavior = FunctionChoiceBehavior.Auto()
         };

@@ -5,25 +5,12 @@ namespace MySkUtils
     /// <summary>
     /// Configuration settings for Azure OpenAI connection
     /// </summary>
-    public class AzureOpenAIConfig
+    public class GeminiAiConfig
     {
         /// <summary>
         /// Config Section
         /// </summary>
-        public static string ConfigSection { get; } = "AzureOpenAIConfig";
-
-        /// <summary>
-        /// Gets or sets the deployment name for the Azure OpenAI model
-        /// </summary>
-        [Required]
-        public string? Deployment { get; set; }
-
-        /// <summary>
-        /// Gets or sets the endpoint URL for the Azure OpenAI service
-        /// </summary>
-        [Required]
-        [Url]
-        public string? Endpoint { get; set; }
+        public static string ConfigSection { get; } = "GeminiAiConfig";
 
         /// <summary>
         /// Gets or sets the model ID

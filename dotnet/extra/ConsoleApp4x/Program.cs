@@ -2,10 +2,9 @@
 
 using System;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using MySkUtils;
+using Microsoft.SemanticKernel;
 
 namespace ConsoleApp4x
 {
@@ -16,31 +15,13 @@ namespace ConsoleApp4x
         {
             try
             {
-                var hab = Host.CreateApplicationBuilder(args);
 
-                var host = hab.Build();
-                var conf = host.Services.GetRequiredService<IConfiguration>();
-                var env = host.Services.GetRequiredService<IHostEnvironment>();
-                var lf = host.Services.GetRequiredService<IHostApplicationLifetime>();
-                // Build configuration from appsettings.json, environment variables, and user secrets
-                //var configuration = new ConfigurationBuilder()
-                //    .AddJsonFile("appsettings.json", optional: true)
-                //    .AddEnvironmentVariables()
-                //    .AddUserSecrets<AzureOpenAIConfig>(optional: false)
-                //    .Build();
 
-                // Read AzureOpenAI configuration
-                var azureOpenAIConfig = new AzureOpenAIConfig();
-                conf.GetSection("AzureOpenAIConfig").Bind(azureOpenAIConfig);
+                using IHost host = HostComposer.CreateHost(args);
+                IHostApplicationLifetime lf = host.Services
+                    .GetRequiredService<IHostApplicationLifetime>();
 
-                // Validate configuration
-                if (string.IsNullOrWhiteSpace(azureOpenAIConfig.ApiKey) ||
-                    string.IsNullOrWhiteSpace(azureOpenAIConfig.Endpoint) ||
-                    string.IsNullOrWhiteSpace(azureOpenAIConfig.Deployment) ||
-                    string.IsNullOrWhiteSpace(azureOpenAIConfig.ModelId))
-                {
-                    throw new InvalidOperationException("AzureOpenAI configuration is missing. Please configure ApiKey, EndPoint, and DeploymentName in appsettings.json or user secrets.");
-                }
+                Kernel kernel = KernelProvider.GetKernel(host.Services);
 
                 //await ChatDeserializerTest.DoTestAsync(
                 //    "Resources/ChatHistoryDump-exam-11-video-tiled.json",
@@ -64,12 +45,12 @@ namespace ConsoleApp4x
 
                 await FunctionCallAutoRemoteTest.DoTestAsync(
                   "Resources/cdf069b023ea4e33b5c78ac1eff45370_ChatHistoryDump.json",
-                  azureOpenAIConfig,
+                  kernel,
                   lf.ApplicationStopping);
-
             }
-            catch
+            catch(Exception ex)
             {
+                Console.WriteLine(ex.Message);
                 throw;
             }
         }
